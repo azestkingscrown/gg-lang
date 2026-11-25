@@ -10,7 +10,7 @@
     "typecheck": "npm run check && tsc -p tsconfig.node.json --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "svelte-kit sync && vitest run",
     "gg": "tsx src/cli.ts"
   },
   "devDependencies": {
