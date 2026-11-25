@@ -7,7 +7,7 @@
 - **파일 확장자**: `.gg`
 - **실행 모델**: `BigInt` 정수 스택 + `Map<bigint, bigint>` 힙 메모리를 갖춘 스택 가상 머신(VM)
 - **엄격한 문법 검사**: 미등록 키워드·오타·짝이 맞지 않는 블록을 실행 전에 모두 수집하여 밈 말투 진단 메시지로 알려줍니다. (`//` 한 줄 주석 지원)
-- **웹 플레이그라운드**: SvelteKit 3 + Svelte 5 (Runes) + OpenCode.ai 웜 다크 터미널 스타일 UI, Web Worker 비동기 실행/중지, 스텝 디버거, 실시간 문법 검사, 스택/메모리 인스펙터, `localStorage` 자동 저장, URL 공유 링크(`#code=...`), 문자열 → `.gg` 변환기를 제공합니다.
+- **웹 플레이그라운드**: SvelteKit 3 + Svelte 5 (Runes) + 웜 다크 터미널 스타일 UI, Web Worker 비동기 실행/중지, 스텝 디버거, 실시간 문법 검사, 스택/메모리 인스펙터, `localStorage` 자동 저장, URL 공유 링크(`#code=...`), 문자열 → `.gg` 변환기를 제공합니다.
 
 ---
 
@@ -142,7 +142,7 @@ static/
   favicon.svg       # .gg 모노그램 파비콘
 src/
   app.html          # SvelteKit HTML 템플릿 (IBM Plex Mono)
-  app.css           # OpenCode.ai 스타일 웜 다크 디자인 시스템
+  app.css           # 웜 다크 터미널 스타일 디자인 시스템
   core/
     types.ts        # 토큰/진단/명령어/VM 상태 타입
     lexer.ts        # 토크나이저, 지수 상한, 오타 힌트 진단
