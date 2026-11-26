@@ -61,16 +61,16 @@ describe('CLI (src/cli.ts)', () => {
   it('--encode -h 및 --encode 파이프 입력을 올바르게 처리한다', async () => {
     const encodedFlagText = await runCli(['--encode', '-h']);
     expect(encodedFlagText.code).toBe(0);
-    expect(encodedFlagText.stdout).toContain("티~원! // '-'");
-    expect(encodedFlagText.stdout).toContain("티~원! // 'h'");
+    expect(encodedFlagText.stdout).toContain("야~르! // '-'");
+    expect(encodedFlagText.stdout).toContain("야~르! // 'h'");
 
     const encodedPipe = await runCli(['--encode'], (stdin) => {
       stdin.write('안녕');
       stdin.end();
     });
     expect(encodedPipe.code).toBe(0);
-    expect(encodedPipe.stdout).toContain("티~원! // '안'");
-    expect(encodedPipe.stdout).toContain("티~원! // '녕'");
+    expect(encodedPipe.stdout).toContain("야~르! // '안'");
+    expect(encodedPipe.stdout).toContain("야~르! // '녕'");
   });
 
   it('--check, -e/--eval, --stdin, --max-steps 옵션을 처리한다', async () => {
@@ -82,7 +82,7 @@ describe('CLI (src/cli.ts)', () => {
     expect(checkFail.code).toBe(1);
     expect(checkFail.stderr).toContain('LEX_MISSING_NUMBER_VALUE');
 
-    const evalRes = await runCli(['-e', '요이~ 예? 예? 지랄 티~~원 줴줴이야', '--stdin', '15 27']);
+    const evalRes = await runCli(['-e', '요이~ 예? 예? 지랄 야~~르 줴줴이야', '--stdin', '15 27']);
     expect(evalRes.code).toBe(0);
     expect(evalRes.stdout).toBe('42\n');
 
@@ -98,7 +98,7 @@ describe('CLI (src/cli.ts)', () => {
   });
 
   it('개행 없는 출력 직후 런타임 에러 시 줄을 분리하고 디렉터리/오류 옵션을 거부한다', async () => {
-    const splitErr = await runCli(['-e', '요이~ 엄..... 티~원 엄. 엄 지~~~랄 줴줴이야']);
+    const splitErr = await runCli(['-e', '요이~ 엄..... 야~르 엄. 엄 지~~~랄 줴줴이야']);
     expect(splitErr.code).toBe(1);
     expect(splitErr.stdout).toBe('5\n');
     expect(splitErr.stderr).toContain('RUNTIME_DIV_ZERO');

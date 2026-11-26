@@ -17,7 +17,7 @@ export const EXAMPLES: ExampleProgram[] = [
   {
     id: 'hello',
     title: '1. Hello, World!',
-    description: '기본적인 아스키 코드 조합과 티~원! 문자 출력을 보여줍니다.',
+    description: '기본적인 아스키 코드 조합과 야~르! 문자 출력을 보여줍니다.',
     defaultStdin: '',
     code: helloCode.trimEnd(),
   },
@@ -65,7 +65,7 @@ export const EXAMPLES: ExampleProgram[] = [
 어엄
 엄.,
 아예?
-티원
+야르
 지~~~~~랄
 아뇨아뇨?
   넌 나가라!`,

@@ -194,8 +194,8 @@
             <td><code>예?</code> 정수 입력 push · <code>아 예?</code> 문자 1글자 코드포인트 입력 (EOF=-1)</td>
           </tr>
           <tr>
-            <td><code>티~원</code></td>
-            <td><code>티~원</code> / <code>티~~원</code> / <code>티~원!</code></td>
+            <td><code>야~르</code></td>
+            <td><code>야~르</code> / <code>야~~르</code> / <code>야~르!</code></td>
             <td>정수 출력 / 정수+줄바꿈 출력 / 유니코드 문자 출력</td>
           </tr>
           <tr>

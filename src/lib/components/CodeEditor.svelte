@@ -256,7 +256,7 @@
       spellcheck="false"
       wrap="off"
       aria-label="줴줴랭 소스 코드 에디터"
-      placeholder="요이~&#10;엄..... 티~~원&#10;줴줴이야"
+      placeholder="요이~&#10;엄..... 야~~르&#10;줴줴이야"
       oninput={handleInput}
       onclick={updateCursorPosition}
       onkeyup={updateCursorPosition}

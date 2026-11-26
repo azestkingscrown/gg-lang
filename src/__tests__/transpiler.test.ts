@@ -6,7 +6,7 @@ describe('Transpiler (textToGG & encodeBigInt)', () => {
     const huge = 10n ** 1205n + 42n;
     const hugeNeg = -(10n ** 1205n + 7n);
     for (const n of [0n, 1n, -7n, 10n, 42n, 1005n, -4032n, 128293n, huge, hugeNeg]) {
-      const src = `요이~ ${encodeBigInt(n)} 티~원 줴줴이야`;
+      const src = `요이~ ${encodeBigInt(n)} 야~르 줴줴이야`;
       const state = run(src);
       expect(state.error).toBeNull();
       expect(state.output).toBe(n.toString());
@@ -34,8 +34,8 @@ describe('Transpiler (textToGG & encodeBigInt)', () => {
   it('주석에 코드포인트 숫자 없이 문자만 남기고, 외로운 서로게이트와 Bidi/제어문자를 안전 처리한다', () => {
     const ggSample = textToGG('줴A');
     const lines = ggSample.split('\n');
-    expect(lines[1]).toMatch(/티~원! \/\/ '줴'$/);
-    expect(lines[2]).toMatch(/티~원! \/\/ 'A'$/);
+    expect(lines[1]).toMatch(/야~르! \/\/ '줴'$/);
+    expect(lines[2]).toMatch(/야~르! \/\/ 'A'$/);
 
     const loneSurrogate = textToGG('\uD800');
     expect(compile(loneSurrogate).diagnostics).toEqual([]);

@@ -7,7 +7,7 @@ describe('Lexer (tokenize)', () => {
       '요이~',
       '엄 엄... 엄,, 어엄. 어어엄....',
       '예? 아 예?',
-      '티~원 티~~원 티~원!',
+      '야~르 야~~르 야~르!',
       '지랄 지~랄 지~~랄 지~~~랄 지~~~~랄',
       '지랄? 지~랄? 지~~랄?',
       '쥐랄 쥐~랄 쥐~~랄 쥐~~~랄 쥐~~~~랄 쥐랄! 쥐~랄!',
@@ -118,12 +118,12 @@ describe('Lexer (tokenize)', () => {
   it('긴 미등록 토큰 에러 메시지를 절단하고 다양한 오타 힌트를 제공한다', () => {
     const hugeUnknown = '헐'.repeat(200);
     const { diagnostics } = tokenize(
-      `요이 아예? 티원 줴줴 지~~~~~랄 지~~~랄? 쥐~~랄! 쥐~~~~~랄 넌나가라 쥐롤 제제이야 예! ${hugeUnknown}`,
+      `요이 아예? 야르 줴줴 지~~~~~랄 지~~~랄? 쥐~~랄! 쥐~~~~~랄 넌나가라 쥐롤 제제이야 예! ${hugeUnknown}`,
     );
     expect(diagnostics).toHaveLength(13);
     expect(diagnostics[0].hint).toContain('요이~');
     expect(diagnostics[1].hint).toContain('아 예?');
-    expect(diagnostics[2].hint).toContain('티~원');
+    expect(diagnostics[2].hint).toContain('야~르');
     expect(diagnostics[3].hint).toContain('줴줴이야');
     expect(diagnostics[4].code).toBe('LEX_TOO_MANY_TILDES');
     expect(diagnostics[5].code).toBe('LEX_TOO_MANY_TILDES');

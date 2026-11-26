@@ -10,7 +10,7 @@ describe('Parser (compile & parse)', () => {
   });
 
   it('요이~ 누락, 중복, 줴줴이야 누락을 모두 수집하고 에러 시 instructions를 비운다', () => {
-    const prog = compile('엄. 요이~ 티~원');
+    const prog = compile('엄. 요이~ 야~르');
     expect(prog.diagnostics.map((d) => d.code)).toEqual([
       'SYNTAX_MISSING_START',
       'SYNTAX_DUPLICATE_START',
@@ -35,7 +35,7 @@ describe('Parser (compile & parse)', () => {
       요이~
       엄.
       아뇨아뇨?
-        엄.. 티~원
+        엄.. 야~르
         줴줴이야
       아뇨아뇨!
       줴줴이야

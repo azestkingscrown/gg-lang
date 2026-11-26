@@ -92,7 +92,7 @@ export function textToGG(text: string): string {
       displayCh = '\ufffd';
     }
     const expr = encodeBigInt(BigInt(cp));
-    lines.push(`${expr} 티~원! // '${formatCommentChar(displayCh, cp)}'`);
+    lines.push(`${expr} 야~르! // '${formatCommentChar(displayCh, cp)}'`);
   }
   lines.push('줴줴이야');
   return lines.join('\n');

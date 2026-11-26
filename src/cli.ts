@@ -37,7 +37,7 @@ function printUsage(): void {
 
 사용법:
   npm run gg -- <파일경로.gg> [옵션]
-  npm run gg -- -e "요이~ 엄..... 티~~원 줴줴이야"
+  npm run gg -- -e "요이~ 엄..... 야~~르 줴줴이야"
   npm run gg -- --encode "출력할 문자열"
 
 옵션:

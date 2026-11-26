@@ -17,16 +17,16 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
   it('사칙연산, 음수 나눗셈/나머지(0 방향 절사), 비교 연산을 정확히 수행한다', () => {
     const state = run(`
       요이~
-      엄..... 엄,, 지랄 티~~원       // 5 + (-2) = 3
-      엄... 엄..... 지~랄 티~~원     // 3 - 5 = -2
-      어엄. 엄... 지~~랄 티~~원      // 10 * 3 = 30
-      어엄.. 엄... 지~~~랄 티~~원    // 20 / 3 = 6
-      어엄.. 엄... 지~~~~랄 티~~원   // 20 % 3 = 2
-      엄,,,,,,, 엄.. 지~~~랄 티~~원  // -7 / 2 = -3
-      엄,,,,,,, 엄.. 지~~~~랄 티~~원 // -7 % 2 = -1
-      엄... 엄... 지랄? 티~~원       // 3 == 3 -> 1
-      엄.. 엄..... 지~랄? 티~~원     // 2 < 5 -> 1
-      엄.. 엄..... 지~~랄? 티~~원    // 2 > 5 -> 0
+      엄..... 엄,, 지랄 야~~르       // 5 + (-2) = 3
+      엄... 엄..... 지~랄 야~~르     // 3 - 5 = -2
+      어엄. 엄... 지~~랄 야~~르      // 10 * 3 = 30
+      어엄.. 엄... 지~~~랄 야~~르    // 20 / 3 = 6
+      어엄.. 엄... 지~~~~랄 야~~르   // 20 % 3 = 2
+      엄,,,,,,, 엄.. 지~~~랄 야~~르  // -7 / 2 = -3
+      엄,,,,,,, 엄.. 지~~~~랄 야~~르 // -7 % 2 = -1
+      엄... 엄... 지랄? 야~~르       // 3 == 3 -> 1
+      엄.. 엄..... 지~랄? 야~~르     // 2 < 5 -> 1
+      엄.. 엄..... 지~~랄? 야~~르    // 2 > 5 -> 0
       줴줴이야
     `);
     expect(state.error).toBeNull();
@@ -47,12 +47,12 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
     const state = run(`
       요이~
       엄. 엄.. 엄...     // [1, 2, 3]
-      쥐~~~~랄 티~~원    // DEPTH = 3, stack [1, 2, 3]
+      쥐~~~~랄 야~~르    // DEPTH = 3, stack [1, 2, 3]
       쥐~~~랄            // ROT -> [2, 3, 1]
       쥐~~랄             // OVER -> [2, 3, 1, 3]
       쥐~랄              // SWAP -> [2, 3, 3, 1]
       쥐랄               // DUP -> [2, 3, 3, 1, 1]
-      티~~원 티~~원 티~~원 티~~원 티~~원
+      야~~르 야~~르 야~~르 야~~르 야~~르
       어어엄. 엄....     // val = 100, addr = 4
       쥐랄!              // mem[4] = 100
       어엄. 엄,,,,,      // val = 10, addr = -5
@@ -60,7 +60,7 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
       엄.... 쥐~랄!      // load mem[4] -> 100
       엄,,,,, 쥐~랄!     // load mem[-5] -> 10
       엄..... 쥐~랄!     // load mem[5] (미초기화) -> 0
-      티~~원 티~~원 티~~원
+      야~~르 야~~르 야~~르
       줴줴이야
     `);
     expect(state.error).toBeNull();
@@ -84,20 +84,20 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
         아뇨아뇨?
           넌 나가라! // BREAK
         아뇨아뇨!
-        쥐랄 티~~원
+        쥐랄 야~~르
         엄.
       아뇨아뇨!
       넌 나가라
       엄 아뇨아뇨~  // 0이므로 0회 실행
-        엄......... 티~~원
+        엄......... 야~~르
       아뇨아뇨!
       넌 나가라
       엄.
       아뇨아뇨?
-        엄....... 티~~원
+        엄....... 야~~르
         줴줴이야    // 조기 종료
       아뇨아뇨!
-      엄......... 티~~원
+      엄......... 야~~르
       줴줴이야
     `);
     expect(state.error).toBeNull();
@@ -107,15 +107,15 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
       요이~
       엄 아뇨
       아뇨아뇨?
-        엄. 티~~원
+        엄. 야~~르
       아뇨아뇨
-        엄.. 티~~원
+        엄.. 야~~르
       아뇨아뇨!
       엄. 아뇨
       아뇨아뇨?
-        엄... 티~~원
+        엄... 야~~르
       아뇨아뇨
-        엄.... 티~~원
+        엄.... 야~~르
       아뇨아뇨!
       줴줴이야
     `);
@@ -124,18 +124,18 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
   });
 
   it('입출력 및 유니코드 이모지/잘못된 코드포인트/EOF/스텝초과를 처리한다', () => {
-    const emojiEcho = run('요이~ 아 예? 티~원! 아 예? 티~~원 줴줴이야', { stdin: '🔥' });
+    const emojiEcho = run('요이~ 아 예? 야~르! 아 예? 야~~르 줴줴이야', { stdin: '🔥' });
     expect(emojiEcho.error).toBeNull();
     expect(emojiEcho.output).toBe('🔥-1\n');
 
-    const badCodepoint = run('요이~ 엄, 티~원! 줴줴이야');
+    const badCodepoint = run('요이~ 엄, 야~르! 줴줴이야');
     expectRuntimeError(badCodepoint, 'RUNTIME_INVALID_CODEPOINT');
     expect(badCodepoint.stack).toEqual([-1n]);
 
-    const eofInt = run('요이~ 예? 티~~원 줴줴이야', { stdin: '  ' });
+    const eofInt = run('요이~ 예? 야~~르 줴줴이야', { stdin: '  ' });
     expectRuntimeError(eofInt, 'RUNTIME_STDIN_EOF');
 
-    const badInt = run('요이~ 예? 티~~원 줴줴이야', { stdin: 'abc' });
+    const badInt = run('요이~ 예? 야~~르 줴줴이야', { stdin: 'abc' });
     expectRuntimeError(badInt, 'RUNTIME_INVALID_INT');
 
     const infLoop = run('요이~ 엄. 아뇨아뇨~ 아뇨아뇨! 줴줴이야', { maxSteps: 50 });
@@ -171,7 +171,7 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
     expectRuntimeError(stdinBomb, 'RUNTIME_BIGINT_OVERFLOW');
     expect(stdinBomb.error!.message.length).toBeLessThan(150);
 
-    const outLimit = run('요이~ 엄. 아뇨아뇨~ 어엄. 티~원 아뇨아뇨! 줴줴이야', {
+    const outLimit = run('요이~ 엄. 아뇨아뇨~ 어엄. 야~르 아뇨아뇨! 줴줴이야', {
       maxOutputLength: 5,
     });
     expectRuntimeError(outLimit, 'RUNTIME_OUTPUT_LIMIT');
@@ -196,7 +196,7 @@ describe('JjeJjeVM (execution, limits & examples)', () => {
     });
     expectRuntimeError(badOpVm.run(), 'RUNTIME_INVALID_OPCODE');
 
-    const { vm } = createVM('요이~ 엄.. 엄... 지랄 티~원 줴줴이야');
+    const { vm } = createVM('요이~ 엄.. 엄... 지랄 야~르 줴줴이야');
     expect(vm.isHalted).toBe(false);
     expect(vm.step()).toBe(true);
     expect(vm.step()).toBe(true);

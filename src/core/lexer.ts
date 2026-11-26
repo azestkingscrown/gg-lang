@@ -13,9 +13,9 @@ const EXACT_KEYWORDS = new Map<string, TokenType>([
   ['요이~', 'START'],
   ['줴줴이야', 'HALT'],
   ['예?', 'INPUT_INT'],
-  ['티~원', 'PRINT_INT'],
-  ['티~~원', 'PRINT_INT_LN'],
-  ['티~원!', 'PRINT_CHAR'],
+  ['야~르', 'PRINT_INT'],
+  ['야~~르', 'PRINT_INT_LN'],
+  ['야~르!', 'PRINT_CHAR'],
   ['아뇨', 'NOT'],
   ['아뇨아뇨?', 'IF'],
   ['아뇨아뇨', 'ELSE'],
@@ -119,8 +119,8 @@ function getTypoHint(raw: string): string | undefined {
   if (raw === '예' || raw === '예!' || raw === '아예' || raw === '아예?') {
     return "혹시 '예?' 또는 '아 예?'를 쓰려던 건가요?";
   }
-  if (/^티~*원[!?.~]*$/.test(raw)) {
-    return "혹시 '티~원', '티~~원', '티~원!' 중 하나를 쓰려던 건가요?";
+  if (/^야~*르[!?.~]*$/.test(raw)) {
+    return "혹시 '야~르', '야~~르', '야~르!' 중 하나를 쓰려던 건가요?";
   }
   if (
     raw === '줴줴' ||
