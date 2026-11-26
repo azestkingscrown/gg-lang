@@ -15,7 +15,7 @@ All notable changes to `gg-lang` (줴줴랭) are documented in this file.
 - **CI/CD 빌드 안정화**: `tsconfig.json`이 SvelteKit 3 내장 `$app/tsconfig`를 상속하도록 수정하고 `npm test` 실행 전 `svelte-kit sync`를 수행해 클린 CI 환경 테스트·빌드를 안정화했습니다.
 
 ### Contributors
-- **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)** (치지직 코딩 방송) — 출력 키워드(`야~르`) 개편 조언
+- **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)** ([@clearcat99](https://github.com/clearcat99) · 치지직 코딩 방송) — 출력 키워드(`야~르`) 개편 조언
 
 ## [v1.0] - 2026-11-25
 

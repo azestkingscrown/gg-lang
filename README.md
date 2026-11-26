@@ -166,4 +166,4 @@ examples/           # .gg 예제 파일 6종
 
 ## 기여자 (Contributors)
 
-- **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)** (치지직 코딩 방송) — 출력 키워드(`야~르`) 개편 조언
+- **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)** ([@clearcat99](https://github.com/clearcat99) · 치지직 코딩 방송) — 출력 키워드(`야~르`) 개편 조언
