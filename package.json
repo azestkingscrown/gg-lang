@@ -1,6 +1,6 @@
 {
   "name": "gg-lang",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "description": "줴줴랭 (JjeJje / .gg) — 스택 기반 난해한 프로그래밍 언어 & SvelteKit 웹 플레이그라운드",
   "type": "module",

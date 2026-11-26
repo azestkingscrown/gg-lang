@@ -47,7 +47,7 @@
     <div class="wordmark" aria-label="jjejje.gg">
       <span class="wm-muted">jje</span><span class="wm-bright">jje</span><span class="wm-ext">.gg</span>
     </div>
-    <span class="brand-meta">줴줴랭 v1.0 // STACK ESOLANG</span>
+    <span class="brand-meta">줴줴랭 v1.1 // STACK ESOLANG</span>
   </div>
 
   <div class="actions">
