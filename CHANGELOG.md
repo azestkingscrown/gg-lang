@@ -5,7 +5,7 @@ All notable changes to `gg-lang` (줴줴랭) are documented in this file.
 ## [v1.1] - 2026-11-26
 
 ### Changed
-- **출력 키워드 개편**: 기존 `티~원` / `티~~원` / `티~원!` 출력 키워드를 **`야~르` / `야~~르` / `야~르!`** 로 전면 교체했습니다.
+- **출력 키워드 개편**: 기존 출력 키워드를 **`야~르` / `야~~르` / `야~르!`** 로 전면 교체했습니다.
   - 코어 렉서([`src/core/lexer.ts`](src/core/lexer.ts)) 토큰 매핑 및 오타 힌트 반영
   - 트랜스파일러([`src/core/transpiler.ts`](src/core/transpiler.ts)), CLI([`src/cli.ts`](src/cli.ts)), 예제 6종([`examples/`](examples/)), 웹 팔레트/치트시트, 테스트 및 [`README.md`](README.md) 일괄 업데이트
 - **버전 표기 업데이트**: 패키지 버전(`1.1.0`), 웹 플레이그라운드 헤더 및 문법 명세 버전을 `v1.1`로 갱신했습니다.
@@ -13,6 +13,9 @@ All notable changes to `gg-lang` (줴줴랭) are documented in this file.
 ### Added / Fixed
 - **라이선스 및 문서 정리**: MIT [`LICENSE`](LICENSE) 파일을 추가하고 문서 내 타사 브랜드 언급을 제거했습니다.
 - **CI/CD 빌드 안정화**: `tsconfig.json`이 SvelteKit 3 내장 `$app/tsconfig`를 상속하도록 수정하고 `npm test` 실행 전 `svelte-kit sync`를 수행해 클린 CI 환경 테스트·빌드를 안정화했습니다.
+
+### Contributors
+- **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)** (치지직 코딩 방송) — 출력 키워드(`야~르`) 개편 조언
 
 ## [v1.0] - 2026-11-25
 
