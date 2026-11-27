@@ -1,0 +1,423 @@
+{
+  "specVersion": "1.2",
+  "cases": [
+    {
+      "id": "lex-utf8-bom-and-whitespace",
+      "category": "lexer",
+      "description": "선두 UTF-8 BOM, 탭, NBSP(U+00A0), 전각 공백(U+3000), CRLF 줄바꿈을 구분자로 처리한다",
+      "code": "﻿요이~ 엄...\t어엄..　지랄\r\n야~~르\r줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "23\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "lex-attached-inline-comments",
+      "category": "lexer",
+      "description": "토큰에 공백 없이 바로 붙은 // 한 줄 주석을 올바르게 분리한다",
+      "code": "요이~//시작\n엄....//사\n엄..//이\n지랄//더하기\n야~~르//출력\n줴줴이야//끝",
+      "expected": {
+        "status": "ok",
+        "output": "6\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "lex-number-exponents-and-negatives",
+      "category": "lexer",
+      "description": "엄(0), 어엄.(10), 어어엄....(400), 엄,,(-2), 어엄,,(-20)을 정확히 계산한다",
+      "code": "요이~ 엄 야~~르 어엄. 야~~르 어어엄.... 야~~르 엄,, 야~~르 어엄,, 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "0\n10\n400\n-2\n-20\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "lex-polite-jirol-aliases",
+      "category": "lexer",
+      "description": "순화 별칭 지~롤 / 지~롤? 이 지~랄 / 지~랄? 과 동일하게 동작한다",
+      "code": "요이~ 어엄. 엄.... 지롤 야~~르 어엄. 엄... 지~롤 야~~르 엄... 엄.... 지~~롤 야~~르 엄....... 엄.. 지~~~롤 야~~르 엄....... 엄.. 지~~~~롤 야~~르 엄.. 엄.. 지롤? 야~~르 엄. 엄.. 지~롤? 야~~르 엄.. 엄. 지~~롤? 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "14\n7\n12\n3\n1\n1\n1\n1\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "lex-err-unknown-token",
+      "category": "lexer",
+      "description": "미등록 키워드는 LEX_UNKNOWN_TOKEN 문법 에러를 발생시킨다",
+      "code": "요이~ 야르 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_UNKNOWN_TOKEN"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-mixed-number-marks",
+      "category": "lexer",
+      "description": "엄 리터럴에 .과 ,를 섞어 쓰면 LEX_MIXED_NUMBER_MARKS 오류가 발생한다",
+      "code": "요이~ 엄., 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_MIXED_NUMBER_MARKS"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-missing-number-value",
+      "category": "lexer",
+      "description": "어 접두어가 붙고 점/쉼표가 없으면 LEX_MISSING_NUMBER_VALUE 오류가 발생한다",
+      "code": "요이~ 어엄 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_MISSING_NUMBER_VALUE"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-number-too-large",
+      "category": "lexer",
+      "description": "어 개수가 1000을 초과하면 LEX_NUMBER_TOO_LARGE 오류가 발생한다",
+      "code": "요이~ 어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어어엄. 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_NUMBER_TOO_LARGE"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-incomplete-ah-multiline",
+      "category": "lexer",
+      "description": "아 예? 는 같은 줄에 있어야 하며 줄바꿈 시 LEX_INCOMPLETE_AH 가 발생한다",
+      "code": "요이~ 아\n예? 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_INCOMPLETE_AH"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-incomplete-neon-multiline",
+      "category": "lexer",
+      "description": "넌 나가라 는 같은 줄에 있어야 하며 줄바꿈 시 LEX_INCOMPLETE_NEON / LEX_ORPHAN_NAGARA 가 발생한다",
+      "code": "요이~ 넌\n나가라 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_INCOMPLETE_NEON",
+          "LEX_ORPHAN_NAGARA"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-too-many-tildes",
+      "category": "lexer",
+      "description": "지~랄 물결 5개 이상 또는 비교 물결 3개 이상은 LEX_TOO_MANY_TILDES 가 발생한다",
+      "code": "요이~ 지~~~~~랄 지~~~랄? 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_TOO_MANY_TILDES"
+        ]
+      }
+    },
+    {
+      "id": "lex-err-invalid-stack-and-memory-ops",
+      "category": "lexer",
+      "description": "쥐~랄 범위 초과는 LEX_INVALID_STACK_OP 및 LEX_INVALID_MEMORY_OP 를 발생시킨다",
+      "code": "요이~ 쥐~~~~~랄 쥐~~랄! 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "LEX_INVALID_STACK_OP",
+          "LEX_INVALID_MEMORY_OP"
+        ]
+      }
+    },
+    {
+      "id": "parser-if-else-truthy-and-falsy",
+      "category": "parser",
+      "description": "아뇨아뇨? 조건문이 참(비영)/거짓(0) 분기를 올바르게 실행하고 조건 값을 pop한다",
+      "code": "요이~ 엄. 아뇨아뇨? 엄.. 야~~르 아뇨아뇨 엄... 야~~르 아뇨아뇨! 엄 아뇨아뇨? 엄.. 야~~르 아뇨아뇨 엄.... 야~~르 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "2\n4\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "parser-while-peeks-without-popping",
+      "category": "parser",
+      "description": "아뇨아뇨~ (WHILE) 은 스택 top 을 pop 하지 않고 검사하며 종료 후 0 이 스택에 남는다",
+      "code": "요이~ 엄... 아뇨아뇨~ 쥐랄 야~~르 엄. 지~랄 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "3\n2\n1\n",
+        "stack": [
+          "0"
+        ]
+      }
+    },
+    {
+      "id": "parser-nested-while-break-continue",
+      "category": "parser",
+      "description": "중첩 WHILE 내부에서 넌 나가라!(BREAK)가 가장 가까운 안쪽 루프만 탈출한다",
+      "code": "요이~ 엄.. 아뇨아뇨~ 엄.. 아뇨아뇨~ 쥐랄 엄. 지랄? 아뇨아뇨? 넌 나가라! 아뇨아뇨! 엄. 지~랄 아뇨아뇨! 야~~르 쥐랄 야~~르 엄. 지~랄 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "1\n2\n1\n1\n",
+        "stack": [
+          "0"
+        ]
+      }
+    },
+    {
+      "id": "parser-while-continue",
+      "category": "parser",
+      "description": "WHILE 내부의 아뇨아뇨아뇨(CONTINUE)가 현재 반복 본문의 나머지를 건너뛰고 조건 검사로 점프한다",
+      "code": "요이~ 엄... 아뇨아뇨~ 쥐랄 엄.. 지랄? 아뇨아뇨? 엄. 지~랄 아뇨아뇨아뇨 아뇨아뇨! 쥐랄 야~~르 엄. 지~랄 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "3\n1\n",
+        "stack": [
+          "0"
+        ]
+      }
+    },
+    {
+      "id": "parser-early-halt-stops-execution",
+      "category": "parser",
+      "description": "중간에 배치한 줴줴이야 가 즉시 실행을 종료한다",
+      "code": "요이~ 엄..... 야~~르 줴줴이야 엄. 엄 지~~~랄 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "5\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "parser-err-empty",
+      "category": "parser",
+      "description": "빈 입력 또는 주석만 있는 파일은 SYNTAX_EMPTY 를 반환한다",
+      "code": "// 주석만 존재",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_EMPTY"
+        ]
+      }
+    },
+    {
+      "id": "parser-err-missing-start-and-halt",
+      "category": "parser",
+      "description": "요이~ 와 줴줴이야 누락을 동시에 진단한다",
+      "code": "엄. 야~~르",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_MISSING_START",
+          "SYNTAX_MISSING_HALT"
+        ]
+      }
+    },
+    {
+      "id": "parser-err-duplicate-start",
+      "category": "parser",
+      "description": "요이~ 중복 사용 시 SYNTAX_DUPLICATE_START 를 반환한다",
+      "code": "요이~ 요이~ 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_DUPLICATE_START"
+        ]
+      }
+    },
+    {
+      "id": "parser-err-unexpected-and-duplicate-else",
+      "category": "parser",
+      "description": "짝 없는 ELSE 와 중복 ELSE 를 각각 진단한다",
+      "code": "요이~ 아뇨아뇨 엄. 아뇨아뇨? 아뇨아뇨 아뇨아뇨 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_UNEXPECTED_ELSE",
+          "SYNTAX_DUPLICATE_ELSE"
+        ]
+      }
+    },
+    {
+      "id": "parser-err-unexpected-end-and-unclosed-block",
+      "category": "parser",
+      "description": "짝 없는 END 와 닫히지 않은 블록을 진단한다",
+      "code": "요이~ 아뇨아뇨! 아뇨아뇨~ 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_UNEXPECTED_END",
+          "SYNTAX_UNCLOSED_BLOCK"
+        ]
+      }
+    },
+    {
+      "id": "parser-err-break-continue-outside-loop",
+      "category": "parser",
+      "description": "IF 내부라도 WHILE 밖에서 BREAK/CONTINUE 를 쓰면 오류를 반환한다",
+      "code": "요이~ 엄. 아뇨아뇨? 넌 나가라! 아뇨아뇨아뇨 아뇨아뇨! 줴줴이야",
+      "expected": {
+        "status": "syntax_error",
+        "errorCodes": [
+          "SYNTAX_BREAK_OUTSIDE_LOOP",
+          "SYNTAX_CONTINUE_OUTSIDE_LOOP"
+        ]
+      }
+    },
+    {
+      "id": "vm-negative-div-mod-truncation",
+      "category": "vm",
+      "description": "나눗셈과 나머지는 0 방향 절사를 따르며 나머지는 피제수 부호를 유지한다",
+      "code": "요이~ 엄,,,,,,, 엄.. 지~~~랄 야~~르 엄,,,,,,, 엄.. 지~~~~랄 야~~르 엄....... 엄,, 지~~~랄 야~~르 엄....... 엄,, 지~~~~랄 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "-3\n-1\n-3\n1\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "vm-stack-ops-and-not",
+      "category": "vm",
+      "description": "DUP, SWAP, OVER, ROT, DEPTH, POP, NOT 의 정확한 스택 변화를 검증한다",
+      "code": "요이~ 엄. 엄.. 엄... 쥐~~~랄 쥐~~~~랄 쥐~~랄 쥐~랄 넌 나가라 엄 아뇨 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "",
+        "stack": [
+          "2",
+          "3",
+          "1",
+          "1",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "vm-heap-negative-and-uninitialized",
+      "category": "vm",
+      "description": "음수 힙 주소 저장과 미초기화 주소 0 기본값을 검증한다",
+      "code": "요이~ 엄......... 엄,,, 쥐랄! 엄,,, 쥐~랄! 야~~르 어엄. 쥐~랄! 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "9\n0\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "vm-bigint-beyond-64bit",
+      "category": "vm",
+      "description": "64비트를 초과하는 10^25 수준 정수 연산을 정밀도 손실 없이 처리한다",
+      "code": "요이~ 어어어어어어어어어어어어어어어어어어어어어어어어어엄. 엄..... 지랄 야~~르 줴줴이야",
+      "expected": {
+        "status": "ok",
+        "output": "10000000000000000000000005\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "vm-unicode-char-io-and-eof",
+      "category": "vm",
+      "description": "한글 및 서로게이트 쌍 이모지를 1글자 코드포인트로 읽고 출력하며 EOF 시 -1을 push한다",
+      "code": "요이~ 아 예? 쥐랄 야~~르 야~르! 아 예? 쥐랄 야~~르 야~르! 아 예? 야~~르 줴줴이야",
+      "stdin": "가🔥",
+      "expected": {
+        "status": "ok",
+        "output": "44032\n가128293\n🔥-1\n",
+        "stack": []
+      }
+    },
+    {
+      "id": "vm-err-div-zero",
+      "category": "vm",
+      "description": "0으로 나누기/나머지는 RUNTIME_DIV_ZERO 를 발생시킨다",
+      "code": "요이~ 엄..... 엄 지~~~랄 줴줴이야",
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_DIV_ZERO"
+        ]
+      }
+    },
+    {
+      "id": "vm-err-stack-underflow",
+      "category": "vm",
+      "description": "빈 스택에서 pop 또는 2항 연산 시도 시 RUNTIME_STACK_UNDERFLOW 가 발생한다",
+      "code": "요이~ 넌 나가라 줴줴이야",
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_STACK_UNDERFLOW"
+        ]
+      }
+    },
+    {
+      "id": "vm-err-invalid-codepoint",
+      "category": "vm",
+      "description": "음수나 서로게이트 범위 코드포인트 출력 시 RUNTIME_INVALID_CODEPOINT 가 발생한다",
+      "code": "요이~ 엄, 야~르! 줴줴이야",
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_INVALID_CODEPOINT"
+        ]
+      }
+    },
+    {
+      "id": "vm-err-stdin-eof-and-invalid-int",
+      "category": "vm",
+      "description": "빈 stdin 에서 정수 입력 시 RUNTIME_STDIN_EOF, 비정수 입력 시 RUNTIME_INVALID_INT 가 발생한다",
+      "code": "요이~ 예? 줴줴이야",
+      "stdin": "abc",
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_INVALID_INT"
+        ]
+      }
+    },
+    {
+      "id": "vm-err-stdin-eof",
+      "category": "vm",
+      "description": "공백만 있거나 빈 stdin 에서 예? 호출 시 RUNTIME_STDIN_EOF 가 발생한다",
+      "code": "요이~ 예? 줴줴이야",
+      "stdin": "   \n ",
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_STDIN_EOF"
+        ]
+      }
+    },
+    {
+      "id": "vm-err-step-limit",
+      "category": "vm",
+      "description": "무한 루프 실행 시 maxSteps 초과로 RUNTIME_STEP_LIMIT 가 발생한다",
+      "code": "요이~ 엄. 아뇨아뇨~ 아뇨아뇨! 줴줴이야",
+      "options": {
+        "maxSteps": 15
+      },
+      "expected": {
+        "status": "runtime_error",
+        "errorCodes": [
+          "RUNTIME_STEP_LIMIT"
+        ]
+      }
+    }
+  ]
+}
