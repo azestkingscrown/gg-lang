@@ -1,4 +1,4 @@
-import { JjeJjeVM, compile, type Diagnostic, type VMState } from '../core/index.js';
+import { initEngine, runProgram, type Diagnostic, type VMState } from './engine.js';
 
 export interface WorkerRunRequest {
   id: number;
@@ -13,20 +13,25 @@ export interface WorkerRunResponse {
 }
 
 interface WorkerScope {
-  onmessage: ((event: MessageEvent<WorkerRunRequest>) => void) | null;
+  onmessage: ((event: MessageEvent<WorkerRunRequest>) => void | Promise<void>) | null;
   postMessage(message: WorkerRunResponse): void;
 }
 
 const scope = globalThis as unknown as WorkerScope;
 
-scope.onmessage = (event: MessageEvent<WorkerRunRequest>) => {
+scope.onmessage = async (event: MessageEvent<WorkerRunRequest>) => {
   const { id, source, stdin } = event.data;
-  const program = compile(source);
-  const vm = new JjeJjeVM(program, { stdin });
-  const state = vm.run();
-  scope.postMessage({
-    id,
-    diagnostics: program.diagnostics,
-    state,
-  });
+  try {
+    await initEngine();
+    const { diagnostics, state } = runProgram(source, stdin);
+    scope.postMessage({
+      id,
+      diagnostics,
+      state,
+    });
+  } catch (err) {
+    setTimeout(() => {
+      throw err;
+    }, 0);
+  }
 };

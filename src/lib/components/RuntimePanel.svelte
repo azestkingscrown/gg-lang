@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { VMState } from '../../core/index.js';
+  import type { VMState } from '../engine.js';
 
   interface Props {
     vmState: VMState | null;

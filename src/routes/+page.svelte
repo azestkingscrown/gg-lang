@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import {
-    JjeJjeVM,
+    SteppingVM,
     analyze,
-    compile,
+    createSteppingVM,
+    initEngine,
+    isEngineReady,
+    runProgram,
     type Diagnostic,
     type VMState,
-  } from '../core/index.js';
+  } from '../lib/engine.js';
   import { EXAMPLES } from '../lib/examples.js';
   import {
     AUTO_PLAY_INTERVAL_MS,
@@ -26,12 +29,13 @@
   import TopBar from '../lib/components/TopBar.svelte';
   import TranspilerModal from '../lib/components/TranspilerModal.svelte';
 
+  let engineReady = $state(isEngineReady());
   let code = $state(EXAMPLES[0].code);
   let stdin = $state(EXAMPLES[0].defaultStdin);
   let currentFileName = $state(`${EXAMPLES[0].id}.gg`);
   let selectedExampleId = $state(EXAMPLES[0].id);
 
-  let syntaxDiagnostics = $state.raw<Diagnostic[]>(analyze(EXAMPLES[0].code));
+  let syntaxDiagnostics = $state.raw<Diagnostic[]>([]);
   let runtimeDiagnostic = $state.raw<Diagnostic | null>(null);
   let vmState = $state.raw<VMState | null>(null);
   let statusOverride = $state<string | null>(null);
@@ -44,7 +48,7 @@
 
   let editorRef: CodeEditor | undefined = $state();
 
-  let activeVM: JjeJjeVM | null = null;
+  let activeVM: SteppingVM | null = null;
   let playTimer: number | null = null;
   let analysisTimer: number | null = null;
   let noticeTimer: number | null = null;
@@ -110,7 +114,19 @@
     }
   }
 
+  function disposeActiveVM() {
+    if (activeVM) {
+      activeVM.dispose();
+      activeVM = null;
+    }
+  }
+
   function runStaticAnalysis() {
+    if (!isEngineReady()) {
+      syntaxDiagnostics = [];
+      runtimeDiagnostic = null;
+      return;
+    }
     syntaxDiagnostics = analyze(code);
     runtimeDiagnostic = null;
   }
@@ -129,7 +145,7 @@
   function resetExecution() {
     stopAutoPlay();
     terminateWorker(false);
-    activeVM = null;
+    disposeActiveVM();
     runtimeDiagnostic = null;
     vmState = null;
     statusOverride = null;
@@ -160,7 +176,7 @@
     }
     stopAutoPlay();
     terminateWorker(false);
-    activeVM = null;
+    disposeActiveVM();
     runtimeDiagnostic = null;
     vmState = null;
     statusOverride = null;
@@ -174,38 +190,46 @@
   }
 
   function ensureVMInitialized(): boolean {
+    if (!isEngineReady()) {
+      showNotice('WASM 엔진을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.', 'info');
+      return false;
+    }
     flushScheduledAnalysis();
-    const program = compile(code);
-    syntaxDiagnostics = program.diagnostics;
+    disposeActiveVM();
+    const vm = createSteppingVM(code, stdin);
+    syntaxDiagnostics = vm.diagnostics;
     runtimeDiagnostic = null;
 
-    if (program.diagnostics.length > 0) {
-      activeVM = null;
+    if (vm.diagnostics.length > 0) {
+      vm.dispose();
       vmState = null;
       return false;
     }
 
-    activeVM = new JjeJjeVM(program, { stdin });
+    activeVM = vm;
     return true;
   }
 
   function handleRunAll() {
+    if (!isEngineReady()) {
+      showNotice('WASM 엔진을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.', 'info');
+      return;
+    }
     stopAutoPlay();
     terminateWorker(false);
     flushScheduledAnalysis();
     statusOverride = null;
 
-    const program = compile(code);
-    syntaxDiagnostics = program.diagnostics;
+    disposeActiveVM();
+    const preDiagnostics = analyze(code);
+    syntaxDiagnostics = preDiagnostics;
     runtimeDiagnostic = null;
 
-    if (program.diagnostics.length > 0) {
-      activeVM = null;
+    if (preDiagnostics.length > 0) {
       vmState = null;
       return;
     }
 
-    activeVM = null;
     vmState = null;
     const sourceSnapshot = code;
     const stdinSnapshot = stdin;
@@ -239,8 +263,8 @@
       worker.postMessage(req);
     } catch {
       isWorkerRunning = false;
-      const vm = new JjeJjeVM(program, { stdin: stdinSnapshot });
-      const state = vm.run();
+      const { diagnostics, state } = runProgram(sourceSnapshot, stdinSnapshot);
+      syntaxDiagnostics = diagnostics;
       runtimeDiagnostic = state.error;
       vmState = state;
     }
@@ -365,6 +389,16 @@
   }
 
   onMount(() => {
+    void initEngine()
+      .then(() => {
+        engineReady = true;
+        runStaticAnalysis();
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        showNotice(`WASM 엔진 초기화 실패: ${msg}`, 'error');
+      });
+
     const shared = decodeSharePayload(window.location.hash);
     if (shared) {
       applyLoadedCode(shared.code, shared.stdin, 'shared.gg', '');
@@ -401,6 +435,7 @@
   onDestroy(() => {
     stopAutoPlay();
     terminateWorker(false);
+    disposeActiveVM();
     flushScheduledAnalysis();
     if (noticeTimer !== null) window.clearTimeout(noticeTimer);
     if (shareTimer !== null) window.clearTimeout(shareTimer);
@@ -468,12 +503,13 @@
       }}
       onClearOutput={handleClearOutput}
     />
-    <InspectorTabs {vmState} {code} fileName={currentFileName} />
+    <InspectorTabs {vmState} {code} fileName={currentFileName} {engineReady} />
   </div>
 </main>
 
 <TranspilerModal
   open={transpilerOpen}
+  {engineReady}
   onClose={() => (transpilerOpen = false)}
   onApply={(generatedCode) => {
     transpilerOpen = false;

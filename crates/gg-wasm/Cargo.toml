@@ -1,0 +1,16 @@
+[package]
+name = "gg-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WebAssembly bindings for gg-core powering the SvelteKit playground"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+gg-core = { path = "../gg-core" }
+num-bigint = "0.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "=0.2.130"

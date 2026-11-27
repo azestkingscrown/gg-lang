@@ -2,37 +2,20 @@
   "name": "gg-lang",
   "version": "1.2.0",
   "license": "MIT",
-  "description": "줴줴랭 (JjeJje / .gg) — 스택 기반 난해한 프로그래밍 언어 & SvelteKit 웹 플레이그라운드",
+  "description": "줴줴랭 (JjeJje / .gg) — Rust/WASM 스택 기반 난해한 프로그래밍 언어 & SvelteKit 웹 플레이그라운드",
   "type": "module",
-  "bin": {
-    "gg": "./dist-pkg/cli.js",
-    "gg-lang": "./dist-pkg/cli.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist-pkg/core/index.d.ts",
-      "import": "./dist-pkg/core/index.js"
-    }
-  },
-  "files": [
-    "dist-pkg",
-    "examples",
-    "spec",
-    "README.md",
-    "README_EN.md",
-    "DESIGN.md",
-    "LICENSE"
-  ],
   "scripts": {
     "dev": "vite dev",
     "prepare": "svelte-kit sync || echo ''",
+    "build:wasm": "cargo build -p gg-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir src/lib/wasm-pkg target/wasm32-unknown-unknown/release/gg_wasm.wasm",
+    "build:cli": "cargo build --release -p gg-cli",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "typecheck": "npm run check && tsc -p tsconfig.node.json --noEmit",
     "build": "npm run typecheck && vite build",
-    "build:pkg": "rm -rf dist-pkg && tsc -p tsconfig.pkg.json && chmod +x dist-pkg/cli.js",
     "preview": "vite preview",
     "test": "svelte-kit sync && vitest run",
-    "gg": "tsx src/cli.ts"
+    "test:rust": "cargo test --workspace",
+    "gg": "cargo run --quiet -p gg-cli --"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.1",
@@ -41,7 +24,6 @@
     "@types/node": "^24.0.0",
     "svelte": "^5.59.1",
     "svelte-check": "^4.7.8",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"

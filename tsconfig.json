@@ -3,12 +3,11 @@
   "include": ["src", "*"],
   "exclude": [
     "src/service-worker",
-    "src/cli.ts",
-    "src/cli-format.ts",
-    "src/repl.ts",
+    "src/lib/wasm-pkg",
     "src/__tests__",
-    "dist-pkg",
-    "editors"
+    "editors",
+    "crates",
+    "target"
   ],
   "compilerOptions": {
     "strict": true,

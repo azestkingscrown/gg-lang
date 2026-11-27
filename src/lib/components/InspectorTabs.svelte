@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { compileToTarget, type EmitTarget, type VMState } from '../../core/index.js';
+  import { compileToTarget, type EmitTarget, type VMState } from '../engine.js';
   import {
     MAX_INSPECTOR_ITEMS,
     copyToClipboard,
@@ -12,9 +12,10 @@
     vmState: VMState | null;
     code: string;
     fileName: string;
+    engineReady: boolean;
   }
 
-  let { vmState, code, fileName }: Props = $props();
+  let { vmState, code, fileName, engineReady }: Props = $props();
 
   let activeTab: 'inspector' | 'compile' | 'cheatsheet' = $state('inspector');
   let emitTarget: EmitTarget = $state('js');
@@ -22,7 +23,7 @@
   let copyTimer: number | null = null;
 
   let compileResult = $derived.by(() => {
-    if (activeTab !== 'compile') return null;
+    if (activeTab !== 'compile' || !engineReady) return null;
     return compileToTarget(code, emitTarget);
   });
 
@@ -278,7 +279,9 @@
     {/if}
 
     <div class="compile-scroll">
-      {#if !compileResult || compileResult.diagnostics.length > 0}
+      {#if !engineReady}
+        <div class="compile-placeholder">Rust WASM 엔진을 초기화하는 중입니다...</div>
+      {:else if !compileResult || compileResult.diagnostics.length > 0}
         <div class="compile-placeholder">
           문법 에러가 있어 코드를 생성할 수 없습니다. 왼쪽 Diagnostics 패널의 오류를 먼저 수정해 주세요.
         </div>

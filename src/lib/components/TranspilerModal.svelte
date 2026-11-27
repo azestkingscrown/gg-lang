@@ -1,16 +1,17 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import { textToGG } from '../../core/index.js';
+  import { textToGG } from '../engine.js';
   import { DEBOUNCE_MS, MAX_TRANSPILER_CHARS, copyToClipboard } from '../utils.js';
 
   interface Props {
     open: boolean;
+    engineReady: boolean;
     onClose: () => void;
     onApply: (generatedCode: string) => void;
     onWarn: (message: string) => void;
   }
 
-  let { open, onClose, onApply, onWarn }: Props = $props();
+  let { open, engineReady, onClose, onApply, onWarn }: Props = $props();
 
   let rawText = $state('줴줴이야~ 화이팅!');
   let generatedCode = $state('');
@@ -25,6 +26,10 @@
   let lineCount = $derived(generatedCode ? generatedCode.split('\n').length : 0);
 
   function updatePreview() {
+    if (!engineReady) {
+      generatedCode = '';
+      return;
+    }
     let text = rawText;
     if (text.length > MAX_TRANSPILER_CHARS) {
       text = text.slice(0, MAX_TRANSPILER_CHARS);
@@ -37,13 +42,18 @@
   $effect(() => {
     if (open) {
       lastFocusedEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      updatePreview();
       void tick().then(() => inputEl?.focus());
     } else if (lastFocusedEl) {
       if (document.contains(lastFocusedEl)) {
         lastFocusedEl.focus();
       }
       lastFocusedEl = null;
+    }
+  });
+
+  $effect(() => {
+    if (open && engineReady) {
+      updatePreview();
     }
   });
 
@@ -75,6 +85,10 @@
   }
 
   function handleApply() {
+    if (!engineReady) {
+      onWarn('WASM 엔진을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
     const code = textToGG(rawText.slice(0, MAX_TRANSPILER_CHARS));
     onApply(code);
   }

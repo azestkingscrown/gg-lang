@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Diagnostic } from '../../core/index.js';
+  import type { Diagnostic } from '../engine.js';
 
   interface Props {
     diagnostics: Diagnostic[];
