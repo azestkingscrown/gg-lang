@@ -1,0 +1,14 @@
+[package]
+name = "gg-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native CLI interpreter, REPL, tracer, and JS/C11 compiler for gg-lang"
+
+[[bin]]
+name = "gg"
+path = "src/main.rs"
+
+[dependencies]
+gg-core = { path = "../gg-core" }
+num-bigint = "0.5"
