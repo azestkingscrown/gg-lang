@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite dev",
     "prepare": "svelte-kit sync || echo ''",
-    "build:wasm": "cargo build -p gg-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir src/lib/wasm-pkg target/wasm32-unknown-unknown/release/gg_wasm.wasm",
+    "build:wasm": "cargo build -p gg-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --omit-default-module-path --out-dir src/lib/wasm-pkg target/wasm32-unknown-unknown/release/gg_wasm.wasm",
     "build:cli": "cargo build --release -p gg-cli",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "typecheck": "npm run check && tsc -p tsconfig.node.json --noEmit",

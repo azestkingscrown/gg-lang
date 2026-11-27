@@ -1,9 +1,11 @@
-import { initEngine, runProgram, type Diagnostic, type VMState } from './engine.js';
+import { initEngineFromUrl, runProgram, type Diagnostic, type VMState } from './engine-core.js';
 
 export interface WorkerRunRequest {
   id: number;
   source: string;
   stdin: string;
+  wasmUrl: string;
+  maxSteps?: number;
 }
 
 export interface WorkerRunResponse {
@@ -20,10 +22,10 @@ interface WorkerScope {
 const scope = globalThis as unknown as WorkerScope;
 
 scope.onmessage = async (event: MessageEvent<WorkerRunRequest>) => {
-  const { id, source, stdin } = event.data;
+  const { id, source, stdin, wasmUrl, maxSteps } = event.data;
   try {
-    await initEngine();
-    const { diagnostics, state } = runProgram(source, stdin);
+    await initEngineFromUrl(wasmUrl);
+    const { diagnostics, state } = runProgram(source, stdin, { maxSteps });
     scope.postMessage({
       id,
       diagnostics,

@@ -6,3 +6,9 @@ members = ["crates/gg-core", "crates/gg-cli", "crates/gg-wasm"]
 version = "1.2.0"
 edition = "2024"
 license = "MIT"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = "debuginfo"

@@ -11,6 +11,7 @@ import {
   isEngineReady,
   isIncompleteFragment,
   runProgram,
+  runProgramWithTrace,
   textToGG,
 } from '../lib/engine.js';
 
@@ -125,5 +126,28 @@ describe('gg-wasm browser engine bridge', () => {
   it('detects incomplete REPL fragments accurately', () => {
     expect(isIncompleteFragment('요이~ 엄. 아뇨아뇨~')).toBe(true);
     expect(isIncompleteFragment('엄.')).toBe(false);
+  });
+
+  it('preserves TokenType::GT JSON schema and supports maxSteps and execution tracing', () => {
+    const gtVm = createSteppingVM('요이~ 엄.. 엄. 지~~랄? 야~~르 줴줴이야', '');
+    try {
+      expect(gtVm.step()).toBe(true);
+      expect(gtVm.step()).toBe(true);
+      expect(gtVm.getState().currentToken?.type).toBe('GT');
+    } finally {
+      gtVm.dispose();
+    }
+
+    const limited = runProgram('요이~ 엄. 아뇨아뇨~ 아뇨아뇨! 줴줴이야', '', { maxSteps: 5 });
+    expect(limited.state.error?.code).toBe('RUNTIME_STEP_LIMIT');
+
+    const traced = runProgramWithTrace('요이~ 엄... 엄.. 지랄 야~~르 줴줴이야', '');
+    expect(traced.diagnostics).toEqual([]);
+    expect(traced.traceTruncated).toBe(false);
+    expect(traced.state.output).toBe('5\n');
+    expect(traced.trace.some((ev) => ev.phase === 'before' && ev.op === 'PUSH')).toBe(true);
+    expect(
+      traced.trace.some((ev) => ev.phase === 'after' && ev.op === 'ADD' && ev.stack[0] === 5n),
+    ).toBe(true);
   });
 });

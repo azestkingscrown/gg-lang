@@ -4,6 +4,7 @@
     SteppingVM,
     analyze,
     createSteppingVM,
+    getWasmUrl,
     initEngine,
     isEngineReady,
     runProgram,
@@ -96,12 +97,21 @@
     isAutoPlaying = false;
   }
 
-  function terminateWorker(asStopped = false) {
+  function destroyWorker() {
     if (runWorker) {
       runWorker.terminate();
       runWorker = null;
     }
     isWorkerRunning = false;
+  }
+
+  function terminateWorker(asStopped = false) {
+    workerRequestId += 1;
+    if (isWorkerRunning) {
+      destroyWorker();
+    } else {
+      isWorkerRunning = false;
+    }
     if (asStopped) {
       statusOverride = '실행 중단됨';
     }
@@ -235,32 +245,33 @@
     const stdinSnapshot = stdin;
 
     try {
-      const worker = new Worker(new URL('../lib/worker.ts', import.meta.url), { type: 'module' });
-      runWorker = worker;
+      if (!runWorker) {
+        const worker = new Worker(new URL('../lib/worker.ts', import.meta.url), { type: 'module' });
+        worker.onmessage = (event: MessageEvent<WorkerRunResponse>) => {
+          const res = event.data;
+          if (res.id !== workerRequestId) return;
+          isWorkerRunning = false;
+          syntaxDiagnostics = res.diagnostics;
+          runtimeDiagnostic = res.state.error;
+          vmState = res.state;
+        };
+        worker.onerror = (err) => {
+          if (runWorker !== worker) return;
+          destroyWorker();
+          showNotice(`실행 워커 오류: ${err.message || '알 수 없는 오류'}`, 'error');
+        };
+        runWorker = worker;
+      }
+
       const reqId = ++workerRequestId;
       isWorkerRunning = true;
-
-      worker.onmessage = (event: MessageEvent<WorkerRunResponse>) => {
-        const res = event.data;
-        if (res.id !== reqId) return;
-        terminateWorker(false);
-        syntaxDiagnostics = res.diagnostics;
-        runtimeDiagnostic = res.state.error;
-        vmState = res.state;
-      };
-
-      worker.onerror = (err) => {
-        if (runWorker !== worker) return;
-        terminateWorker(false);
-        showNotice(`실행 워커 오류: ${err.message || '알 수 없는 오류'}`, 'error');
-      };
-
       const req: WorkerRunRequest = {
         id: reqId,
         source: sourceSnapshot,
         stdin: stdinSnapshot,
+        wasmUrl: new URL(getWasmUrl(), window.location.href).href,
       };
-      worker.postMessage(req);
+      runWorker.postMessage(req);
     } catch {
       isWorkerRunning = false;
       const { diagnostics, state } = runProgram(sourceSnapshot, stdinSnapshot);
@@ -434,7 +445,7 @@
 
   onDestroy(() => {
     stopAutoPlay();
-    terminateWorker(false);
+    destroyWorker();
     disposeActiveVM();
     flushScheduledAnalysis();
     if (noticeTimer !== null) window.clearTimeout(noticeTimer);
