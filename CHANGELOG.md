@@ -2,6 +2,27 @@
 
 All notable changes to `gg-lang` (줴줴랭) are documented in this file.
 
+## [v1.2] - 2026-11-27
+
+### Added
+- **정식 CLI 패키지(`bin`/`exports`), 대화형 REPL & 실행 트레이스**:
+  - [`package.json`](package.json) `bin`(`gg`, `gg-lang`), `exports`, `tsconfig.pkg.json`, `npm run build:pkg` 빌드 파이프라인 추가
+  - [`src/repl.ts`](src/repl.ts): 스택·힙 상태를 유지하고 여러 줄 블록 이어쓰기와 메타 명령(`:stack`, `:mem`, `:reset`, `:trace`, `:help`, `:q`)을 지원하는 대화형 REPL 구현 (`allowFragment` 조각 파싱 및 `isIncompleteFragment` 지원)
+  - [`src/cli.ts`](src/cli.ts) & [`src/cli-format.ts`](src/cli-format.ts): `repl`, `run`, `--trace`, `--error-style <meme|plain>`, `-v/--version` 추가 (`JjeJjeVM` `onTrace` 훅 연동)
+- **JavaScript / ISO C11 컴파일러 (`--emit js|c`) & 플레이그라운드 `COMPILE` 탭**:
+  - [`src/core/codegen.ts`](src/core/codegen.ts): 브라우저 호환 순수 TS 코드 생성기(`emitJavaScript`, `emitC`, `compileToTarget`) 추가 — 임의 정밀도 `BigInt` JS 출력 및 `cc -std=c11 -O2 -Wall -Wextra -Werror` 무경고 C11 출력 지원
+  - CLI `--emit <js|c>`, `-o/--output` 옵션 및 웹 플레이그라운드 [`InspectorTabs.svelte`](src/lib/components/InspectorTabs.svelte) 내 `COMPILE (JS / C)` 탭(복사·다운로드·경고 표시) 추가
+- **대표 알고리즘 · 문자열 예제 10종 확충 (6종 → 16종)**:
+  - `truth_machine.gg`, `factorial.gg`, `gcd.gg`, `is_prime.gg`, `gugudan.gg`, `99bottles.gg`, `palindrome.gg`, `caesar_cipher.gg`, `sort.gg`, `rpn_calc.gg` 및 [`examples/README.md`](examples/README.md) 추가
+  - [`TopBar.svelte`](src/lib/components/TopBar.svelte) 예제 드롭다운을 `기초` / `알고리즘` / `문자열 · 파서` / `진단` `<optgroup>`으로 분류
+- **공식 설계 명세 & 언어 중립 적합성 테스트 규격**:
+  - [`DESIGN.md`](DESIGN.md), [`README_EN.md`](README_EN.md), [`spec/README.md`](spec/README.md), [`spec/conformance.json`](spec/conformance.json) (34개 어휘·파서·VM 테스트 벡터) 및 [`src/__tests__/conformance.test.ts`](src/__tests__/conformance.test.ts) 추가
+- **VS Code 구문 강조 및 스니펫 확장**:
+  - [`editors/vscode/`](editors/vscode/) (`package.json`, `language-configuration.json`, `gg.tmLanguage.json`, `gg.code-snippets`, `README.md`) 및 정규식 검증 테스트([`src/__tests__/vscode-ext.test.ts`](src/__tests__/vscode-ext.test.ts)) 추가
+
+### Changed
+- 패키지 버전(`1.2.0`), 웹 플레이그라운드 헤더(`v1.2`), [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)(`build:pkg` CI 검증 단계 추가), [`README.md`](README.md) 문서를 v1.2 기준으로 갱신했습니다.
+
 ## [v1.1] - 2026-11-26
 
 ### Changed

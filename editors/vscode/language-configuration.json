@@ -1,0 +1,17 @@
+{
+  "comments": {
+    "lineComment": "//"
+  },
+  "autoClosingPairs": [],
+  "surroundingPairs": [],
+  "folding": {
+    "markers": {
+      "start": "^\\s*(?:아뇨아뇨\\?|아뇨아뇨~)",
+      "end": "^\\s*아뇨아뇨!"
+    }
+  },
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(?:아뇨아뇨\\?|아뇨아뇨~|아뇨아뇨)(?:\\s|$|//)",
+    "decreaseIndentPattern": "^\\s*(?:아뇨아뇨!|아뇨아뇨)(?:\\s|$|//)"
+  }
+}

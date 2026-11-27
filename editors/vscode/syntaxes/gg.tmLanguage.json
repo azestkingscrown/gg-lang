@@ -1,0 +1,116 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "줴줴랭 (gg-lang)",
+  "scopeName": "source.gg",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#boundaries"
+    },
+    {
+      "include": "#control"
+    },
+    {
+      "include": "#stack-control"
+    },
+    {
+      "include": "#io"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#stack-memory"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#invalid"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.gg",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "boundaries": {
+      "patterns": [
+        {
+          "name": "keyword.control.boundary.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])(?:요이~|줴줴이야)(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "control": {
+      "patterns": [
+        {
+          "name": "keyword.control.flow.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])(?:아뇨아뇨아뇨|아뇨아뇨[?~!]|아뇨아뇨|아뇨)(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "stack-control": {
+      "patterns": [
+        {
+          "name": "keyword.control.stack.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])넌[\\t \\u00A0\\u3000]+나가라!?(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "io": {
+      "patterns": [
+        {
+          "name": "support.function.io.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])(?:아[\\t \\u00A0\\u3000]+예\\?|예\\?|야~~르|야~르!?)(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])지~{0,2}[랄롤]\\?(?=$|[\\s\\u00A0\\u3000]|//)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])지~{0,4}[랄롤](?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "stack-memory": {
+      "patterns": [
+        {
+          "name": "entity.name.function.memory.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])쥐~?랄!(?=$|[\\s\\u00A0\\u3000]|//)"
+        },
+        {
+          "name": "entity.name.function.stack.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])쥐~{0,4}랄(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])(?:어+엄(?:\\.+|,+)|엄(?:\\.+|,+)?)(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    },
+    "invalid": {
+      "patterns": [
+        {
+          "name": "invalid.illegal.gg",
+          "match": "(?<=^|[\\s\\u00A0\\u3000])(?:어*엄(?=[^\\s/]*\\.)(?=[^\\s/]*,)[.,]+|어+엄|지~{5,}[랄롤]|지~{3,}[랄롤]\\?|쥐~{5,}랄|쥐~{2,}랄!)(?=$|[\\s\\u00A0\\u3000]|//)"
+        }
+      ]
+    }
+  }
+}

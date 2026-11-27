@@ -1,0 +1,45 @@
+{
+  "name": "gg-lang-vscode",
+  "displayName": "줴줴랭 (gg-lang)",
+  "description": "Syntax highlighting and snippets for 줴줴랭 (.gg) stack-based esoteric language",
+  "version": "1.2.0",
+  "publisher": "azestkingscrown",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "gg",
+        "aliases": [
+          "줴줴랭",
+          "gg-lang",
+          "JjeJje"
+        ],
+        "extensions": [
+          ".gg",
+          ".GG"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gg",
+        "scopeName": "source.gg",
+        "path": "./syntaxes/gg.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "gg",
+        "path": "./snippets/gg.code-snippets"
+      }
+    ]
+  }
+}

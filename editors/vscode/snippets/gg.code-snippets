@@ -1,0 +1,89 @@
+{
+  "Program Skeleton": {
+    "prefix": "gg-init",
+    "body": [
+      "요이~",
+      "\t$0",
+      "줴줴이야"
+    ],
+    "description": "요이~ ... 줴줴이야 기본 프로그램 골격"
+  },
+  "If Block": {
+    "prefix": "gg-if",
+    "body": [
+      "아뇨아뇨?",
+      "\t$0",
+      "아뇨아뇨!"
+    ],
+    "description": "아뇨아뇨? ... 아뇨아뇨! 조건문 (top pop 후 0이 아니면 실행)"
+  },
+  "If Else Block": {
+    "prefix": "gg-ifelse",
+    "body": [
+      "아뇨아뇨?",
+      "\t$1",
+      "아뇨아뇨",
+      "\t$2",
+      "아뇨아뇨!"
+    ],
+    "description": "아뇨아뇨? ... 아뇨아뇨 ... 아뇨아뇨! 조건/분기문"
+  },
+  "While Loop": {
+    "prefix": "gg-while",
+    "body": [
+      "아뇨아뇨~",
+      "\t$0",
+      "아뇨아뇨!"
+    ],
+    "description": "아뇨아뇨~ ... 아뇨아뇨! 반복문 (top peek, pop 하지 않음)"
+  },
+  "Print Integer": {
+    "prefix": "gg-print",
+    "body": [
+      "야~르"
+    ],
+    "description": "정수 출력 (개행 없음)"
+  },
+  "Print Integer Line": {
+    "prefix": "gg-println",
+    "body": [
+      "야~~르"
+    ],
+    "description": "정수 출력 + 줄바꿈"
+  },
+  "Print Unicode Character": {
+    "prefix": "gg-printchar",
+    "body": [
+      "야~르!"
+    ],
+    "description": "유니코드 코드포인트 문자 출력"
+  },
+  "Heap Store": {
+    "prefix": "gg-store",
+    "body": [
+      "쥐랄!"
+    ],
+    "description": "힙 메모리 저장 (val addr -> )"
+  },
+  "Heap Load": {
+    "prefix": "gg-load",
+    "body": [
+      "쥐~랄!"
+    ],
+    "description": "힙 메모리 조회 (addr -> val)"
+  },
+  "Input Integer": {
+    "prefix": "gg-input-int",
+    "body": [
+      "예?"
+    ],
+    "description": "표준 입력 정수 1개 읽기"
+  },
+  "Input Character": {
+    "prefix": "gg-input-char",
+    "body": [
+      "아 예?"
+    ],
+    "description": "표준 입력 유니코드 문자 1글자 읽기 (EOF=-1)"
+  }
+}
