@@ -157,4 +157,52 @@ fn cli_repl_preserves_state_and_handles_multiline_and_errors() {
     let (code, _, stderr) = run_gg(&["repl"], Some("아뇨아뇨~\n엄.\n"));
     assert_eq!(code, 1);
     assert!(stderr.contains("SYNTAX_UNCLOSED_BLOCK"));
+
+    // REPL --stdin cursor advances across evaluations and resets on :reset
+    let stdin_script = "예? 야~~르\n예? 야~~르\n:reset\n예? 야~~르\n:q\n";
+    let (code, stdout, _) = run_gg(&["repl", "--stdin", "10 20"], Some(stdin_script));
+    assert_eq!(code, 0);
+    assert_eq!(stdout, "10\n20\n스택과 메모리를 초기화했습니다.\n10\n");
+
+    // REPL meta commands work inside an open multiline block
+    let multiline_meta = "엄.....\n아뇨아뇨~\n:reset\n:stack\n아뇨아뇨~\n:q\n";
+    let (code, stdout, stderr) = run_gg(&["repl"], Some(multiline_meta));
+    assert_eq!(code, 0);
+    assert_eq!(stdout, "스택과 메모리를 초기화했습니다.\n[]\n");
+    assert!(!stderr.contains("SYNTAX_UNCLOSED_BLOCK"));
+}
+
+#[test]
+fn cli_help_encode_double_dash_and_error_paths() {
+    // --help writes to stdout and exits 0
+    let (code, stdout, stderr) = run_gg(&["--help"], None);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("사용법:"));
+    assert!(stderr.is_empty());
+
+    // --encode -- -hello strips the -- separator cleanly
+    let (code, stdout, _) = run_gg(&["--encode", "--", "-hello"], None);
+    assert_eq!(code, 0);
+    assert!(!stdout.contains("' '"));
+    assert!(stdout.contains("야~르! // '-'"));
+    assert!(stdout.contains("야~르! // 'h'"));
+
+    // Invalid option values and conflicting combinations
+    for bad_args in [
+        &["--max-steps", "abc", "-e", "요이~ 줴줴이야"][..],
+        &["-o", "out.c", "examples/hello.gg"][..],
+        &["examples/hello.gg", "--emit", "js", "--check"][..],
+        &["examples/hello.gg", "--emit", "js", "--trace"][..],
+        &["examples/hello.gg", "--emit", "js", "--stdin", "1"][..],
+        &["examples/hello.gg", "--check", "--trace"][..],
+        &["examples/hello.gg", "--check", "--max-steps", "5"][..],
+        &["examples/hello.gg", "--emit", "rust"][..],
+        &["--trace", "--encode", "abc"][..],
+        &["examples/does_not_exist.gg"][..],
+        &["--unknown-flag"][..],
+    ] {
+        let (code, _, stderr) = run_gg(bad_args, None);
+        assert_eq!(code, 1, "expected exit 1 for {:?}", bad_args);
+        assert!(!stderr.is_empty(), "expected stderr for {:?}", bad_args);
+    }
 }

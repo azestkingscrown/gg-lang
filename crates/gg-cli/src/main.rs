@@ -12,7 +12,7 @@ use gg_core::{
 };
 
 use format::{ErrorStyle, format_diagnostic, format_trace_event};
-use repl::{ReplConfig, run_repl};
+use repl::{ReplConfig, run_repl, run_tty_repl};
 
 const MAX_SOURCE_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_STDIN_BYTES: usize = 2 * 1024 * 1024;
@@ -43,8 +43,8 @@ struct ParsedArgs {
     stdin_text: Option<String>,
 }
 
-fn print_usage() {
-    eprintln!(
+fn print_usage(to_stderr: bool) {
+    let usage = format!(
         "줴줴랭 (JjeJje / .gg) CLI 인터프리터 v{VERSION}
 
 사용법:
@@ -67,6 +67,11 @@ fn print_usage() {
   -v, --version             버전 정보 표시
   -h, --help                도움말 표시"
     );
+    if to_stderr {
+        eprintln!("{usage}");
+    } else {
+        println!("{usage}");
+    }
 }
 
 fn parse_positive_int(raw: &str, flag_name: &str) -> Result<usize, String> {
@@ -173,7 +178,10 @@ fn parse_args(argv: &[String]) -> Result<ParsedArgs, String> {
             {
                 return Err("--encode 옵션은 다른 실행 옵션이나 파일 경로와 함께 사용할 수 없습니다.".to_string());
             }
-            let rest = &argv[i + 1..];
+            let mut rest = &argv[i + 1..];
+            if rest.first().map(String::as_str) == Some("--") {
+                rest = &rest[1..];
+            }
             return Ok(ParsedArgs {
                 mode: CliMode::Encode {
                     has_args: !rest.is_empty(),
@@ -336,6 +344,14 @@ fn parse_args(argv: &[String]) -> Result<ParsedArgs, String> {
         return Err("--emit 옵션과 --check 옵션은 동시에 사용할 수 없습니다.".to_string());
     }
 
+    if emit_target.is_some() && (trace || stdin_text.is_some()) {
+        return Err("--emit 옵션은 --trace 또는 --stdin과 함께 사용할 수 없습니다.".to_string());
+    }
+
+    if check_only && (trace || max_steps.is_some() || stdin_text.is_some()) {
+        return Err("--check 옵션은 --trace, --max-steps, --stdin과 함께 사용할 수 없습니다.".to_string());
+    }
+
     if eval_code.is_none() && file_path.is_none() {
         return Err("실행할 .gg 파일 경로 또는 -e/--eval 코드를 입력해주세요.".to_string());
     }
@@ -384,14 +400,14 @@ fn run_cli() -> i32 {
             if !msg.is_empty() {
                 eprintln!("[옵션 오류] {msg}\n");
             }
-            print_usage();
+            print_usage(true);
             return 1;
         }
     };
 
     match parsed.mode {
         CliMode::Help => {
-            print_usage();
+            print_usage(false);
             return 0;
         }
         CliMode::Version => {
@@ -401,18 +417,16 @@ fn run_cli() -> i32 {
         CliMode::Repl => {
             let stdin = io::stdin();
             let is_tty = stdin.is_terminal();
-            return run_repl(
-                stdin.lock(),
-                io::stdout(),
-                io::stderr(),
-                is_tty,
-                ReplConfig {
-                    trace: parsed.trace,
-                    max_steps: parsed.max_steps,
-                    error_style: parsed.error_style,
-                    stdin_text: parsed.stdin_text.unwrap_or_default(),
-                },
-            );
+            let cfg = ReplConfig {
+                trace: parsed.trace,
+                max_steps: parsed.max_steps,
+                error_style: parsed.error_style,
+                stdin_text: parsed.stdin_text.unwrap_or_default(),
+            };
+            if is_tty {
+                return run_tty_repl(cfg);
+            }
+            return run_repl(stdin.lock(), io::stdout(), io::stderr(), false, cfg);
         }
         CliMode::Encode { has_args, text } => {
             let input_text = if has_args {
@@ -516,6 +530,8 @@ fn run_cli() -> i32 {
         .instructions
         .iter()
         .any(|ins| matches!(ins.op, OpCode::InputInt | OpCode::InputChar));
+    let used_implicit_tty_stdin =
+        parsed.stdin_text.is_none() && needs_stdin && io::stdin().is_terminal();
 
     let stdin = if let Some(explicit) = parsed.stdin_text {
         explicit
@@ -560,6 +576,9 @@ fn run_cli() -> i32 {
 
     if let Some(err) = &state.error {
         eprintln!("{}", format_diagnostic(err, parsed.error_style));
+        if used_implicit_tty_stdin && err.code == "RUNTIME_STDIN_EOF" {
+            eprintln!("  힌트: 대화형 터미널에서는 --stdin \"값\" 또는 파이프(echo \"값\" | gg ...)로 입력을 전달하세요.");
+        }
         return 1;
     }
 

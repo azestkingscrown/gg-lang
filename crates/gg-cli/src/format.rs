@@ -15,7 +15,7 @@ fn plain_message(code: &str) -> Option<&'static str> {
         "LEX_MIXED_NUMBER_MARKS" => Some("Cannot mix '.' and ',' in a number literal"),
         "LEX_MISSING_NUMBER_VALUE" => Some("Number literal with '어' prefix requires at least one '.' or ','"),
         "LEX_NUMBER_TOO_LARGE" => Some("Exponent in number literal exceeds maximum limit"),
-        "LEX_TOO_MANY_TILDES" => Some("Too many '~' modifiers (max 4 for arithmetic/stack, max 2 for comparison/print)"),
+        "LEX_TOO_MANY_TILDES" => Some("Too many '~' modifiers (max 4 for arithmetic, max 2 for comparison)"),
         "LEX_INVALID_MEMORY_OP" => Some("Invalid memory operator (expected '쥐랄!' or '쥐~랄!')"),
         "LEX_INVALID_STACK_OP" => Some("Invalid stack operator"),
         "LEX_UNKNOWN_TOKEN" => Some("Unknown token"),
@@ -43,7 +43,6 @@ fn plain_message(code: &str) -> Option<&'static str> {
         "RUNTIME_INVALID_INT" => Some("Invalid integer in stdin"),
         "RUNTIME_DIV_ZERO" => Some("Division by zero"),
         "RUNTIME_INVALID_CODEPOINT" => Some("Invalid Unicode code point for character output"),
-        "RUNTIME_INVALID_OPCODE" => Some("Invalid VM instruction opcode"),
         _ => None,
     }
 }

@@ -12,3 +12,4 @@ path = "src/main.rs"
 [dependencies]
 gg-core = { path = "../gg-core" }
 num-bigint = "0.5"
+rustyline = "15"
