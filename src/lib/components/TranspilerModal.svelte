@@ -1,7 +1,12 @@
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { textToGG } from '../engine.js';
-  import { DEBOUNCE_MS, MAX_TRANSPILER_CHARS, copyToClipboard } from '../utils.js';
+  import {
+    DEBOUNCE_MS,
+    MAX_TRANSPILER_CHARS,
+    copyToClipboard,
+    sliceUnicodeSafe,
+  } from '../utils.js';
 
   interface Props {
     open: boolean;
@@ -32,7 +37,7 @@
     }
     let text = rawText;
     if (text.length > MAX_TRANSPILER_CHARS) {
-      text = text.slice(0, MAX_TRANSPILER_CHARS);
+      text = sliceUnicodeSafe(text, MAX_TRANSPILER_CHARS);
       rawText = text;
       onWarn(`변환기 입력은 최대 ${MAX_TRANSPILER_CHARS.toLocaleString()}자까지만 지원합니다.`);
     }
@@ -53,7 +58,7 @@
 
   $effect(() => {
     if (open && engineReady) {
-      updatePreview();
+      untrack(() => updatePreview());
     }
   });
 
@@ -89,7 +94,7 @@
       onWarn('WASM 엔진을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
-    const code = textToGG(rawText.slice(0, MAX_TRANSPILER_CHARS));
+    const code = textToGG(sliceUnicodeSafe(rawText, MAX_TRANSPILER_CHARS));
     onApply(code);
   }
 

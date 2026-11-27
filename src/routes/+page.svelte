@@ -17,9 +17,11 @@
     DEBOUNCE_MS,
     DRAFT_STORAGE_KEY,
     MAX_FILE_BYTES,
+    MAX_SHARE_URL_LENGTH,
     copyToClipboard,
     decodeSharePayload,
     encodeSharePayload,
+    formatShellArg,
   } from '../lib/utils.js';
   import type { WorkerRunRequest, WorkerRunResponse } from '../lib/worker.js';
   import CodeEditor from '../lib/components/CodeEditor.svelte';
@@ -62,6 +64,13 @@
   );
   let errorLines = $derived(new Set(allDiagnostics.map((diag) => diag.line)));
   let activeLine = $derived(vmState?.currentLine ?? null);
+  let cliCommand = $derived(
+    selectedExampleId === 'syntax-errors'
+      ? 'npm run gg -- --check <파일.gg>'
+      : selectedExampleId
+        ? `npm run gg -- examples/${selectedExampleId}.gg`
+        : `npm run gg -- ${formatShellArg(currentFileName)}`,
+  );
 
   function showNotice(message: string, kind: 'info' | 'warn' | 'error' = 'info') {
     if (noticeTimer !== null) {
@@ -161,7 +170,13 @@
     statusOverride = null;
   }
 
-  function applyLoadedCode(nextCode: string, nextStdin: string, fileName: string, exampleId = '') {
+  function applyLoadedCode(
+    nextCode: string,
+    nextStdin: string,
+    fileName: string,
+    exampleId = '',
+    persistDraft = true,
+  ) {
     flushScheduledAnalysis();
     code = nextCode;
     stdin = nextStdin;
@@ -170,7 +185,9 @@
     resetExecution();
     runStaticAnalysis();
     editorRef?.resetScrollAndCaret();
-    saveDraft();
+    if (persistDraft) {
+      saveDraft();
+    }
   }
 
   function loadExampleById(id: string) {
@@ -376,7 +393,15 @@
   async function handleShareLink() {
     const hash = `#code=${encodeSharePayload(code, stdin)}`;
     const shareUrl = `${window.location.origin}${window.location.pathname}${hash}`;
-    window.history.replaceState(null, '', hash);
+    if (shareUrl.length > MAX_SHARE_URL_LENGTH) {
+      showNotice('코드가 너무 길어 공유 링크를 생성할 수 없습니다. 파일 저장 기능을 이용해주세요.', 'warn');
+      return;
+    }
+    try {
+      window.history.replaceState(null, '', hash);
+    } catch {
+      // ignore SecurityError / history rate-limit errors in restricted frames
+    }
     const copied = await copyToClipboard(shareUrl);
     if (copied) {
       shareFeedback = true;
@@ -399,6 +424,14 @@
     }
   }
 
+  function handleHashChange() {
+    const shared = decodeSharePayload(window.location.hash);
+    if (shared) {
+      applyLoadedCode(shared.code, shared.stdin, 'shared.gg', '', false);
+      showNotice('공유 링크에서 코드를 불러왔습니다.', 'info');
+    }
+  }
+
   onMount(() => {
     void initEngine()
       .then(() => {
@@ -410,9 +443,11 @@
         showNotice(`WASM 엔진 초기화 실패: ${msg}`, 'error');
       });
 
+    window.addEventListener('hashchange', handleHashChange);
+
     const shared = decodeSharePayload(window.location.hash);
     if (shared) {
-      applyLoadedCode(shared.code, shared.stdin, 'shared.gg', '');
+      applyLoadedCode(shared.code, shared.stdin, 'shared.gg', '', false);
       showNotice('공유 링크에서 코드를 불러왔습니다.', 'info');
       return;
     }
@@ -444,6 +479,7 @@
   });
 
   onDestroy(() => {
+    window.removeEventListener('hashchange', handleHashChange);
     stopAutoPlay();
     destroyWorker();
     disposeActiveVM();
@@ -467,7 +503,7 @@
   }}
 />
 
-<CommandStrip syntaxErrorCount={syntaxDiagnostics.length} {currentFileName} />
+<CommandStrip syntaxErrorCount={syntaxDiagnostics.length} {engineReady} {cliCommand} />
 
 {#if notice}
   <div class={`notice-strip ${notice.kind}`} role="status" aria-live="polite">

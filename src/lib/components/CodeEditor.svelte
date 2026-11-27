@@ -30,13 +30,13 @@
   let gutterEl: HTMLDivElement | undefined = $state();
   let textareaEl: HTMLTextAreaElement | undefined = $state();
 
-  let lineCount = $derived(Math.max(1, code.split('\n').length));
+  let lineCount = $derived(Math.max(1, code.split(/\r\n|\r|\n/).length));
 
   function updateCursorPosition() {
     if (!textareaEl) return;
     const pos = textareaEl.selectionStart ?? 0;
     const before = textareaEl.value.slice(0, pos);
-    const lines = before.split('\n');
+    const lines = before.split(/\r\n|\r|\n/);
     cursorLine = lines.length;
     cursorCol = (lines[lines.length - 1]?.length ?? 0) + 1;
   }

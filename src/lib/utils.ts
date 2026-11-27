@@ -24,6 +24,9 @@ export const PALETTE_ITEMS: PaletteItem[] = [
   { token: '지~~랄?', label: '>' },
   { token: '쥐랄', label: 'DUP' },
   { token: '쥐~랄', label: 'SWAP' },
+  { token: '쥐~~랄', label: 'OVER' },
+  { token: '쥐~~~랄', label: 'ROT' },
+  { token: '쥐~~~~랄', label: 'DEPTH' },
   { token: '쥐랄!', label: 'STORE' },
   { token: '쥐~랄!', label: 'LOAD' },
   { token: '아뇨', label: 'NOT' },
@@ -43,7 +46,26 @@ export const MAX_INSPECTOR_ITEMS = 200;
 export const MAX_BIGINT_DISPLAY_CHARS = 36;
 export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 export const MAX_TRANSPILER_CHARS = 10_000;
+export const MAX_SHARE_URL_LENGTH = 32_768;
 export const DRAFT_STORAGE_KEY = 'jjejje:draft:v1';
+
+export function sliceUnicodeSafe(text: string, maxUnits: number): string {
+  if (maxUnits <= 0) return '';
+  if (text.length <= maxUnits) return text;
+  let end = maxUnits;
+  const code = text.charCodeAt(end - 1);
+  if (code >= 0xd800 && code <= 0xdbff) {
+    end -= 1;
+  }
+  return text.slice(0, end);
+}
+
+export function formatShellArg(arg: string): string {
+  if (arg.length > 0 && /^[A-Za-z0-9._/@:-]+$/.test(arg)) {
+    return arg;
+  }
+  return `'${arg.replace(/'/g, `'\\''`)}'`;
+}
 
 export function formatBigIntDisplay(value: bigint): { text: string; full: string } {
   const full = value.toString();
@@ -73,15 +95,34 @@ export function formatCharPreview(value: bigint): string | null {
 }
 
 export function getOffsetForLineColumn(text: string, line: number, column: number): number {
-  const lines = text.split('\n');
-  const clampedLine = Math.max(1, Math.min(line, lines.length));
-  let offset = 0;
-  for (let i = 0; i < clampedLine - 1; i += 1) {
-    offset += lines[i].length + 1;
+  const bomOffset = text.startsWith('\uFEFF') ? 1 : 0;
+  const body = bomOffset ? text.slice(1) : text;
+  const lineStarts: number[] = [0];
+  const lineLengths: number[] = [];
+
+  let i = 0;
+  let curStart = 0;
+  while (i < body.length) {
+    const ch = body[i];
+    if (ch === '\r' || ch === '\n') {
+      lineLengths.push(i - curStart);
+      if (ch === '\r' && body[i + 1] === '\n') {
+        i += 2;
+      } else {
+        i += 1;
+      }
+      curStart = i;
+      lineStarts.push(curStart);
+    } else {
+      i += 1;
+    }
   }
-  const lineLen = lines[clampedLine - 1]?.length ?? 0;
-  const clampedCol = Math.max(1, Math.min(column, lineLen + 1));
-  return offset + (clampedCol - 1);
+  lineLengths.push(body.length - curStart);
+
+  const clampedLine = Math.max(1, Math.min(line, lineStarts.length));
+  const idx = clampedLine - 1;
+  const clampedCol = Math.max(1, Math.min(column, (lineLengths[idx] ?? 0) + 1));
+  return bomOffset + lineStarts[idx] + (clampedCol - 1);
 }
 
 export async function copyToClipboard(

@@ -3,6 +3,12 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { EXAMPLES } from '../lib/examples.js';
 import {
+  PALETTE_ITEMS,
+  formatShellArg,
+  getOffsetForLineColumn,
+  sliceUnicodeSafe,
+} from '../lib/utils.js';
+import {
   analyze,
   compileToTarget,
   createSteppingVM,
@@ -149,5 +155,26 @@ describe('gg-wasm browser engine bridge', () => {
     expect(
       traced.trace.some((ev) => ev.phase === 'after' && ev.op === 'ADD' && ev.stack[0] === 5n),
     ).toBe(true);
+  });
+
+  it('includes all stack tokens in palette and handles Unicode/BOM/CR/shell utilities', () => {
+    const tokens = new Set(PALETTE_ITEMS.map((item) => item.token));
+    expect(tokens.has('쥐~~랄')).toBe(true);
+    expect(tokens.has('쥐~~~랄')).toBe(true);
+    expect(tokens.has('쥐~~~~랄')).toBe(true);
+
+    // Surrogate-safe slicing never leaves an unpaired high surrogate at the end
+    const withEmoji = 'a🔥';
+    expect(sliceUnicodeSafe(withEmoji, 2)).toBe('a');
+    expect(sliceUnicodeSafe(withEmoji, 3)).toBe('a🔥');
+
+    // Offset mapping handles leading BOM, CRLF, and CR-only line breaks
+    expect(getOffsetForLineColumn('\uFEFF요이~ 엄.', 1, 5)).toBe(5);
+    expect(getOffsetForLineColumn('요이~\r\n엄. 줴줴이야', 2, 3)).toBe(7);
+    expect(getOffsetForLineColumn('요이~\r엄. 줴줴이야', 2, 3)).toBe(6);
+
+    // Shell quoting preserves safe names and quotes spaces/single quotes safely
+    expect(formatShellArg('examples/hello.gg')).toBe('examples/hello.gg');
+    expect(formatShellArg("my file's.gg")).toBe("'my file'\\''s.gg'");
   });
 });

@@ -4,15 +4,14 @@
 
   interface Props {
     syntaxErrorCount: number;
-    currentFileName: string;
+    engineReady: boolean;
+    cliCommand: string;
   }
 
-  let { syntaxErrorCount, currentFileName }: Props = $props();
+  let { syntaxErrorCount, engineReady, cliCommand }: Props = $props();
 
   let copied = $state(false);
   let copyTimer: number | null = null;
-
-  let cliCommand = $derived(`npm run gg -- ${currentFileName}`);
 
   async function handleCopyCommand() {
     const ok = await copyToClipboard(cliCommand);
@@ -36,9 +35,15 @@
 
 <div class="command-strip">
   <div class="strip-left">
-    <span class="syntax-indicator" class:err={syntaxErrorCount > 0}>
+    <span
+      class="syntax-indicator"
+      class:loading={!engineReady}
+      class:err={engineReady && syntaxErrorCount > 0}
+    >
       <span class="dot" aria-hidden="true"></span>
-      {#if syntaxErrorCount === 0}
+      {#if !engineReady}
+        WASM LOADING…
+      {:else if syntaxErrorCount === 0}
         SYNTAX OK
       {:else}
         {syntaxErrorCount} SYNTAX {syntaxErrorCount === 1 ? 'ERROR' : 'ERRORS'}
@@ -91,6 +96,10 @@
 
   .syntax-indicator.err {
     color: var(--danger);
+  }
+
+  .syntax-indicator.loading {
+    color: var(--text-muted);
   }
 
   .dot {

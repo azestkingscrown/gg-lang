@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { compileToTarget, type EmitTarget, type VMState } from '../engine.js';
   import {
+    DEBOUNCE_MS,
     MAX_INSPECTOR_ITEMS,
     copyToClipboard,
     formatBigIntDisplay,
@@ -21,15 +22,56 @@
   let emitTarget: EmitTarget = $state('js');
   let copyDone = $state(false);
   let copyTimer: number | null = null;
+  let compileTimer: number | null = null;
+  let compiledCodeInput = $state('');
+
+  $effect(() => {
+    const latestCode = code;
+    const isCompileTab = activeTab === 'compile';
+    const ready = engineReady;
+    const target = emitTarget;
+    void target;
+
+    if (!isCompileTab || !ready) {
+      if (compileTimer !== null) {
+        window.clearTimeout(compileTimer);
+        compileTimer = null;
+      }
+      return;
+    }
+
+    if (compileTimer !== null) {
+      window.clearTimeout(compileTimer);
+    }
+    if (compiledCodeInput === '') {
+      compiledCodeInput = latestCode;
+      return;
+    }
+    compileTimer = window.setTimeout(() => {
+      compileTimer = null;
+      compiledCodeInput = latestCode;
+    }, DEBOUNCE_MS);
+  });
+
+  function syncCompileInputNow() {
+    if (compileTimer !== null) {
+      window.clearTimeout(compileTimer);
+      compileTimer = null;
+    }
+    compiledCodeInput = code;
+  }
 
   let compileResult = $derived.by(() => {
     if (activeTab !== 'compile' || !engineReady) return null;
-    return compileToTarget(code, emitTarget);
+    return compileToTarget(compiledCodeInput, emitTarget);
   });
 
   onDestroy(() => {
     if (copyTimer !== null) {
       window.clearTimeout(copyTimer);
+    }
+    if (compileTimer !== null) {
+      window.clearTimeout(compileTimer);
     }
   });
 
@@ -133,7 +175,10 @@
       role="tab"
       aria-selected={activeTab === 'compile'}
       aria-controls="tab-compile"
-      onclick={() => (activeTab = 'compile')}
+      onclick={() => {
+        activeTab = 'compile';
+        syncCompileInputNow();
+      }}
     >
       COMPILE (JS / C)
     </button>
@@ -280,7 +325,7 @@
 
     <div class="compile-scroll">
       {#if !engineReady}
-        <div class="compile-placeholder">Rust WASM 엔진을 초기화하는 중입니다...</div>
+        <div class="compile-placeholder loading">Rust WASM 엔진을 초기화하는 중입니다...</div>
       {:else if !compileResult || compileResult.diagnostics.length > 0}
         <div class="compile-placeholder">
           문법 에러가 있어 코드를 생성할 수 없습니다. 왼쪽 Diagnostics 패널의 오류를 먼저 수정해 주세요.
@@ -595,6 +640,10 @@
     padding: 14px 12px;
     color: var(--danger);
     font-size: 12px;
+  }
+
+  .compile-placeholder.loading {
+    color: var(--text-muted);
   }
 
   .compile-code {
