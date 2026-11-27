@@ -40,7 +40,9 @@ gg-esolang script.gg
   - Linux x86_64 (`linux-x64`)
   - Linux aarch64 (`linux-arm64`)
   - macOS Apple Silicon (`darwin-arm64`)
+  - macOS Intel (`darwin-x64`)
   - Windows x86_64 (`win32-x64`)
+  - Windows ARM64 (`win32-arm64`)
 
 ## Documentation & Repository
 

@@ -68,7 +68,7 @@ fn cli_runs_files_piped_stdin_eval_check_and_encode() {
 fn cli_supports_trace_error_style_version_emit_and_errors() {
     let (code, stdout, _) = run_gg(&["--version"], None);
     assert_eq!(code, 0);
-    assert!(stdout.starts_with("gg-lang v1.2.0"));
+    assert!(stdout.starts_with(concat!("gg-lang v", env!("CARGO_PKG_VERSION"))));
 
     let (code, stdout, stderr) = run_gg(
         &["-e", "요이~ 엄... 엄.. 지랄 야~~르 줴줴이야", "--trace"],
