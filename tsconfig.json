@@ -1,7 +1,15 @@
 {
   "extends": "$app/tsconfig",
   "include": ["src", "*"],
-  "exclude": ["src/service-worker", "src/cli.ts", "src/__tests__"],
+  "exclude": [
+    "src/service-worker",
+    "src/cli.ts",
+    "src/cli-format.ts",
+    "src/repl.ts",
+    "src/__tests__",
+    "dist-pkg",
+    "editors"
+  ],
   "compilerOptions": {
     "strict": true,
     "noUnusedLocals": true,

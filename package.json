@@ -4,12 +4,32 @@
   "license": "MIT",
   "description": "줴줴랭 (JjeJje / .gg) — 스택 기반 난해한 프로그래밍 언어 & SvelteKit 웹 플레이그라운드",
   "type": "module",
+  "bin": {
+    "gg": "./dist-pkg/cli.js",
+    "gg-lang": "./dist-pkg/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist-pkg/core/index.d.ts",
+      "import": "./dist-pkg/core/index.js"
+    }
+  },
+  "files": [
+    "dist-pkg",
+    "examples",
+    "spec",
+    "README.md",
+    "README_EN.md",
+    "DESIGN.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite dev",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "typecheck": "npm run check && tsc -p tsconfig.node.json --noEmit",
     "build": "npm run typecheck && vite build",
+    "build:pkg": "rm -rf dist-pkg && tsc -p tsconfig.pkg.json && chmod +x dist-pkg/cli.js",
     "preview": "vite preview",
     "test": "svelte-kit sync && vitest run",
     "gg": "tsx src/cli.ts"

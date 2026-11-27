@@ -114,4 +114,55 @@ describe('CLI (src/cli.ts)', () => {
     expect(unknownOpt.code).toBe(1);
     expect(unknownOpt.stderr).toContain('알 수 없는 옵션');
   });
+
+  it('run 서브커맨드, --version, --trace, --error-style plain 을 지원한다', async () => {
+    const versionRes = await runCli(['--version']);
+    expect(versionRes.code).toBe(0);
+    expect(versionRes.stdout).toMatch(/^gg-lang v\d+\.\d+\.\d+/);
+
+    const runSub = await runCli(['run', 'examples/hello.gg']);
+    expect(runSub.code).toBe(0);
+    expect(runSub.stdout).toBe('Hello, World!\n');
+
+    const traced = await runCli([
+      '-e',
+      '요이~ 엄... 엄.. 지랄 야~~르 줴줴이야',
+      '--trace',
+    ]);
+    expect(traced.code).toBe(0);
+    expect(traced.stdout).toBe('5\n');
+    expect(traced.stderr).toContain('[trace] <eval>:');
+    expect(traced.stderr).toContain('#1 before PUSH (엄...) stack=[]');
+    expect(traced.stderr).toContain('#3 after ADD (지랄) stack=[5]');
+
+    const tracedErr = await runCli([
+      '-e',
+      '요이~ 엄. 엄 지~~~랄 줴줴이야',
+      '--trace',
+      '--error-style',
+      'plain',
+    ]);
+    expect(tracedErr.code).toBe(1);
+    expect(tracedErr.stderr).toContain('error DIV');
+    expect(tracedErr.stderr).toContain('[runtime] 1:10 (RUNTIME_DIV_ZERO) Division by zero');
+
+    const plainSyntax = await runCli(['-e', '요이~ 어엄 줴줴이야', '--error-style=plain']);
+    expect(plainSyntax.code).toBe(1);
+    expect(plainSyntax.stderr).toContain('[syntax] 1:5 (LEX_MISSING_NUMBER_VALUE)');
+    expect(plainSyntax.stderr).not.toContain('힌트:');
+  });
+
+  it('repl 서브커맨드를 파이프 입력으로 실행할 수 있다', async () => {
+    const res = await runCli(['repl'], (stdin) => {
+      stdin.write('엄... 엄....\n');
+      stdin.write('지랄\n');
+      stdin.write(':stack\n');
+      stdin.write('야~~르\n');
+      stdin.write(':q\n');
+      stdin.end();
+    });
+    expect(res.code).toBe(0);
+    expect(res.stdout).toBe('[7]\n7\n');
+    expect(res.stderr).toBe('');
+  });
 });

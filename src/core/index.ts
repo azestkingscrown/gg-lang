@@ -1,7 +1,7 @@
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
 import { JjeJjeVM } from './vm.js';
-import type { CompiledProgram, Diagnostic, VMOptions, VMState } from './types.js';
+import type { CompiledProgram, Diagnostic, ParseOptions, VMOptions, VMState } from './types.js';
 
 export type {
   Span,
@@ -10,22 +10,24 @@ export type {
   Diagnostic,
   OpCode,
   Instruction,
+  ParseOptions,
+  TraceEvent,
   CompiledProgram,
   VMOptions,
   VMState,
 } from './types.js';
 export { MAX_EXPONENT, tokenize, truncateDisplay } from './lexer.js';
-export { parse } from './parser.js';
+export { isIncompleteFragment, parse } from './parser.js';
 export { JjeJjeVM } from './vm.js';
 export { encodeBigInt, textToGG } from './transpiler.js';
 
-export function compile(source: string): CompiledProgram {
+export function compile(source: string, options: ParseOptions = {}): CompiledProgram {
   const { tokens, diagnostics } = tokenize(source);
-  return parse(tokens, diagnostics);
+  return parse(tokens, diagnostics, options);
 }
 
-export function analyze(source: string): Diagnostic[] {
-  return compile(source).diagnostics;
+export function analyze(source: string, options: ParseOptions = {}): Diagnostic[] {
+  return compile(source, options).diagnostics;
 }
 
 export function createVM(source: string, options: VMOptions = {}): {

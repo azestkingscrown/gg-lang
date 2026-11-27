@@ -1,5 +1,13 @@
-import { truncateDisplay } from './lexer.js';
-import type { CompiledProgram, Diagnostic, Instruction, OpCode, Token, TokenType } from './types.js';
+import { tokenize, truncateDisplay } from './lexer.js';
+import type {
+  CompiledProgram,
+  Diagnostic,
+  Instruction,
+  OpCode,
+  ParseOptions,
+  Token,
+  TokenType,
+} from './types.js';
 
 type BlockFrame =
   | {
@@ -52,13 +60,17 @@ function findNearestWhile(stack: BlockFrame[]): Extract<BlockFrame, { kind: 'WHI
   return undefined;
 }
 
-export function parse(tokens: Token[], lexDiagnostics: Diagnostic[] = []): CompiledProgram {
+export function parse(
+  tokens: Token[],
+  lexDiagnostics: Diagnostic[] = [],
+  options: ParseOptions = {},
+): CompiledProgram {
   const diagnostics: Diagnostic[] = [...lexDiagnostics];
   const instructions: Instruction[] = [];
   const blockStack: BlockFrame[] = [];
 
   if (tokens.length === 0) {
-    if (diagnostics.length === 0) {
+    if (!options.allowFragment && diagnostics.length === 0) {
       diagnostics.push({
         kind: 'syntax',
         code: 'SYNTAX_EMPTY',
@@ -72,7 +84,7 @@ export function parse(tokens: Token[], lexDiagnostics: Diagnostic[] = []): Compi
     return { instructions, tokens, diagnostics };
   }
 
-  if (tokens[0].type !== 'START') {
+  if (!options.allowFragment && tokens[0].type !== 'START') {
     diagnostics.push({
       kind: 'syntax',
       code: 'SYNTAX_MISSING_START',
@@ -85,7 +97,7 @@ export function parse(tokens: Token[], lexDiagnostics: Diagnostic[] = []): Compi
   }
 
   const lastToken = tokens[tokens.length - 1];
-  if (lastToken.type !== 'HALT') {
+  if (!options.allowFragment && lastToken.type !== 'HALT') {
     diagnostics.push({
       kind: 'syntax',
       code: 'SYNTAX_MISSING_HALT',
@@ -279,4 +291,13 @@ export function parse(tokens: Token[], lexDiagnostics: Diagnostic[] = []): Compi
   }
 
   return { instructions, tokens, diagnostics };
+}
+
+export function isIncompleteFragment(source: string): boolean {
+  const { tokens, diagnostics: lexDiagnostics } = tokenize(source);
+  if (lexDiagnostics.length > 0) {
+    return false;
+  }
+  const { diagnostics } = parse(tokens, lexDiagnostics, { allowFragment: true });
+  return diagnostics.length > 0 && diagnostics.every((diag) => diag.code === 'SYNTAX_UNCLOSED_BLOCK');
 }

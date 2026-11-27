@@ -1,5 +1,13 @@
 import { truncateDisplay } from './lexer.js';
-import type { CompiledProgram, Diagnostic, Instruction, Token, VMOptions, VMState } from './types.js';
+import type {
+  CompiledProgram,
+  Diagnostic,
+  Instruction,
+  Token,
+  TraceEvent,
+  VMOptions,
+  VMState,
+} from './types.js';
 
 const DEFAULT_MAX_STEPS = 200_000;
 const DEFAULT_MAX_STACK_SIZE = 100_000;
@@ -30,11 +38,12 @@ export class JjeJjeVM {
   private readonly maxBigIntBits: number;
   private readonly maxOutputLength: number;
   private readonly stdin: string;
+  private readonly onTrace?: (event: TraceEvent) => void;
 
   private stdinPos = 0;
   private ip = 0;
-  private stack: bigint[] = [];
-  private memory = new Map<bigint, bigint>();
+  private stack: bigint[];
+  private memory: Map<bigint, bigint>;
   private output = '';
   private steps = 0;
   private halted = false;
@@ -44,6 +53,9 @@ export class JjeJjeVM {
   constructor(program: CompiledProgram, options: VMOptions = {}) {
     this.instructions = program.instructions;
     this.stdin = options.stdin ?? '';
+    this.onTrace = options.onTrace;
+    this.stack = options.initialStack ? [...options.initialStack] : [];
+    this.memory = options.initialMemory ? new Map<bigint, bigint>(options.initialMemory) : new Map();
     this.maxSteps = normalizeLimit(options.maxSteps, DEFAULT_MAX_STEPS);
     this.maxStackSize = normalizeLimit(options.maxStackSize, DEFAULT_MAX_STACK_SIZE);
     this.maxMemorySize = normalizeLimit(options.maxMemorySize, DEFAULT_MAX_MEMORY_SIZE);
@@ -250,16 +262,78 @@ export class JjeJjeVM {
       return false;
     }
 
-    const instr = this.instructions[this.ip];
+    const startIp = this.ip;
+    const stepNum = this.steps + 1;
+    const instr = this.instructions[startIp];
     const token = instr.token;
 
+    if (this.onTrace) {
+      this.onTrace({
+        step: stepNum,
+        ip: startIp,
+        op: instr.op,
+        token,
+        phase: 'before',
+        stack: [...this.stack],
+        memorySize: this.memory.size,
+      });
+    }
+
     if (this.steps >= this.maxSteps) {
-      return this.fail(
+      this.fail(
         'RUNTIME_STEP_LIMIT',
         `지~랄 실행 횟수가 최대치(${this.maxSteps}스텝)를 넘었어요! 무한 루프에 빠진 것 같네요.`,
         token,
       );
+      if (this.onTrace && this.error) {
+        this.onTrace({
+          step: stepNum,
+          ip: startIp,
+          op: instr.op,
+          token,
+          phase: 'error',
+          stack: [...this.stack],
+          memorySize: this.memory.size,
+          error: this.error,
+        });
+      }
+      return false;
     }
+
+    const ok = this.executeInstruction(instr);
+    if (!ok) {
+      if (this.onTrace && this.error) {
+        this.onTrace({
+          step: stepNum,
+          ip: startIp,
+          op: instr.op,
+          token,
+          phase: 'error',
+          stack: [...this.stack],
+          memorySize: this.memory.size,
+          error: this.error,
+        });
+      }
+      return false;
+    }
+
+    this.steps += 1;
+    if (this.onTrace) {
+      this.onTrace({
+        step: this.steps,
+        ip: startIp,
+        op: instr.op,
+        token,
+        phase: 'after',
+        stack: [...this.stack],
+        memorySize: this.memory.size,
+      });
+    }
+    return !this.halted;
+  }
+
+  private executeInstruction(instr: Instruction): boolean {
+    const token = instr.token;
 
     switch (instr.op) {
       case 'PUSH': {
@@ -531,8 +605,7 @@ export class JjeJjeVM {
       }
     }
 
-    this.steps += 1;
-    return !this.halted;
+    return true;
   }
 
   run(): VMState {

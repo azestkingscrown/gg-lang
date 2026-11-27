@@ -88,6 +88,22 @@ export interface Instruction {
   token: Token;
 }
 
+export interface ParseOptions {
+  /** Allow omitting '요이~' and '줴줴이야' (used by REPL fragments) */
+  allowFragment?: boolean;
+}
+
+export interface TraceEvent {
+  step: number;
+  ip: number;
+  op: OpCode;
+  token: Token;
+  phase: 'before' | 'after' | 'error';
+  stack: bigint[];
+  memorySize: number;
+  error?: Diagnostic;
+}
+
 export interface CompiledProgram {
   instructions: Instruction[];
   tokens: Token[];
@@ -101,6 +117,9 @@ export interface VMOptions {
   maxMemorySize?: number;
   maxBigIntBits?: number;
   maxOutputLength?: number;
+  onTrace?: (event: TraceEvent) => void;
+  initialStack?: bigint[];
+  initialMemory?: Map<bigint, bigint> | Array<[bigint, bigint]>;
 }
 
 export interface VMState {
