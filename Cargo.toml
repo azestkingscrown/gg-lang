@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["crates/gg-core"]
+
+[workspace.package]
+version = "1.2.0"
+edition = "2024"
+license = "MIT"

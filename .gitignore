@@ -1,6 +1,8 @@
 node_modules/
 dist/
 dist-pkg/
+target/
+src/lib/wasm-pkg/
 .svelte-kit/
 .DS_Store
 *.log
