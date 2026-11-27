@@ -44,7 +44,7 @@ function runEmittedC(code: string, stdin = ''): { status: number | null; stdout:
 }
 
 describe('Codegen (--emit js / c)', () => {
-  it('1~6번 예제에서 JS/C 컴파일 바이너리가 JjeJjeVM과 동일한 출력을 생성한다', () => {
+  it('모든 정상 예제(16종)에서 JS/C 컴파일 바이너리가 JjeJjeVM과 동일한 출력을 생성한다', () => {
     for (const ex of EXAMPLES.filter((item) => item.id !== 'syntax-errors')) {
       const vmState = run(ex.code, { stdin: ex.defaultStdin });
       expect(vmState.error).toBeNull();
@@ -62,7 +62,7 @@ describe('Codegen (--emit js / c)', () => {
       expect(cOut.status, `${ex.id} c status`).toBe(0);
       expect(cOut.stdout, `${ex.id} c stdout`).toBe(vmState.output);
     }
-  });
+  }, 25_000);
 
   it('최소 프로그램, 모든 스택/힙 명령, 음수 나눗셈·나머지, UTF-8 이모지가 동일하게 동작한다', () => {
     const minimal = '요이~ 줴줴이야';

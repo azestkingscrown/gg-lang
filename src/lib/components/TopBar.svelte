@@ -1,5 +1,9 @@
 <script lang="ts">
-  import type { ExampleProgram } from '../examples.js';
+  import {
+    EXAMPLE_CATEGORY_LABELS,
+    type ExampleCategory,
+    type ExampleProgram,
+  } from '../examples.js';
 
   interface Props {
     examples: ExampleProgram[];
@@ -22,6 +26,8 @@
     onShareLink,
     onOpenTranspiler,
   }: Props = $props();
+
+  const CATEGORIES: ExampleCategory[] = ['basic', 'algorithm', 'text', 'diagnostic'];
 
   let fileInputEl: HTMLInputElement | undefined = $state();
 
@@ -61,8 +67,15 @@
         aria-label="예제 선택"
       >
         <option value="">직접 편집 / 파일</option>
-        {#each examples as ex (ex.id)}
-          <option value={ex.id} title={ex.description}>{ex.title}</option>
+        {#each CATEGORIES as cat (cat)}
+          {@const groupItems = examples.filter((ex) => ex.category === cat)}
+          {#if groupItems.length > 0}
+            <optgroup label={EXAMPLE_CATEGORY_LABELS[cat]}>
+              {#each groupItems as ex (ex.id)}
+                <option value={ex.id} title={ex.description}>{ex.title}</option>
+              {/each}
+            </optgroup>
+          {/if}
         {/each}
       </select>
     </label>
