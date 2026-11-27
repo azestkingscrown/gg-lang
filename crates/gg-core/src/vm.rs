@@ -62,6 +62,8 @@ impl JjeJjeVM {
             halted = true;
         }
 
+        let initial_stdin_pos = options.initial_stdin_pos.unwrap_or(0).min(stdin_chars.len());
+
         Self {
             instructions: program.instructions.clone(),
             max_steps: options.max_steps.unwrap_or(DEFAULT_MAX_STEPS),
@@ -70,7 +72,7 @@ impl JjeJjeVM {
             max_bigint_bits: options.max_bigint_bits.unwrap_or(DEFAULT_MAX_BIGINT_BITS),
             max_output_length: options.max_output_length.unwrap_or(DEFAULT_MAX_OUTPUT_LENGTH),
             stdin: stdin_chars,
-            stdin_pos: 0,
+            stdin_pos: initial_stdin_pos,
             ip: 0,
             stack: options.initial_stack.unwrap_or_default(),
             memory: options.initial_memory.unwrap_or_default(),
@@ -93,6 +95,10 @@ impl JjeJjeVM {
 
     pub fn current_steps(&self) -> usize {
         self.steps
+    }
+
+    pub fn stdin_pos(&self) -> usize {
+        self.stdin_pos
     }
 
     pub fn clear_output(&mut self) {

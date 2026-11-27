@@ -53,6 +53,7 @@ pub enum TokenType {
     Mod,
     Eq,
     Lt,
+    #[serde(rename = "GT")]
     GT,
     Dup,
     Swap,
@@ -264,6 +265,7 @@ pub struct TraceEvent {
 #[derive(Debug, Clone, Default)]
 pub struct VMOptions {
     pub stdin: Option<String>,
+    pub initial_stdin_pos: Option<usize>,
     pub max_steps: Option<usize>,
     pub max_stack_size: Option<usize>,
     pub max_memory_size: Option<usize>,
