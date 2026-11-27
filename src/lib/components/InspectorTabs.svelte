@@ -1,14 +1,64 @@
 <script lang="ts">
-  import type { VMState } from '../../core/index.js';
-  import { MAX_INSPECTOR_ITEMS, formatBigIntDisplay, formatCharPreview } from '../utils.js';
+  import { onDestroy } from 'svelte';
+  import { compileToTarget, type EmitTarget, type VMState } from '../../core/index.js';
+  import {
+    MAX_INSPECTOR_ITEMS,
+    copyToClipboard,
+    formatBigIntDisplay,
+    formatCharPreview,
+  } from '../utils.js';
 
   interface Props {
     vmState: VMState | null;
+    code: string;
+    fileName: string;
   }
 
-  let { vmState }: Props = $props();
+  let { vmState, code, fileName }: Props = $props();
 
-  let activeTab: 'inspector' | 'cheatsheet' = $state('inspector');
+  let activeTab: 'inspector' | 'compile' | 'cheatsheet' = $state('inspector');
+  let emitTarget: EmitTarget = $state('js');
+  let copyDone = $state(false);
+  let copyTimer: number | null = null;
+
+  let compileResult = $derived.by(() => {
+    if (activeTab !== 'compile') return null;
+    return compileToTarget(code, emitTarget);
+  });
+
+  onDestroy(() => {
+    if (copyTimer !== null) {
+      window.clearTimeout(copyTimer);
+    }
+  });
+
+  async function handleCopyEmitted() {
+    if (!compileResult || !compileResult.code) return;
+    const ok = await copyToClipboard(compileResult.code);
+    if (ok) {
+      copyDone = true;
+      if (copyTimer !== null) {
+        window.clearTimeout(copyTimer);
+      }
+      copyTimer = window.setTimeout(() => {
+        copyDone = false;
+        copyTimer = null;
+      }, 1300);
+    }
+  }
+
+  function handleDownloadEmitted() {
+    if (!compileResult || !compileResult.code) return;
+    const baseName = fileName.replace(/\.gg$/i, '') || 'program';
+    const downloadName = `${baseName}${compileResult.extension}`;
+    const blob = new Blob([compileResult.code], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = downloadName;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   let stackItems = $derived.by(() => {
     const stack = vmState?.stack ?? [];
@@ -73,6 +123,18 @@
       onclick={() => (activeTab = 'inspector')}
     >
       STACK &amp; MEMORY
+    </button>
+    <button
+      id="tab-btn-compile"
+      type="button"
+      class="tab-btn"
+      class:active={activeTab === 'compile'}
+      role="tab"
+      aria-selected={activeTab === 'compile'}
+      aria-controls="tab-compile"
+      onclick={() => (activeTab = 'compile')}
+    >
+      COMPILE (JS / C)
     </button>
     <button
       id="tab-btn-cheatsheet"
@@ -158,6 +220,71 @@
           {/if}
         </div>
       </div>
+    </div>
+  </div>
+
+  <div
+    id="tab-compile"
+    class="tab-panel"
+    role="tabpanel"
+    aria-labelledby="tab-btn-compile"
+    hidden={activeTab !== 'compile'}
+  >
+    <div class="compile-bar">
+      <div class="compile-targets" role="group" aria-label="컴파일 타깃">
+        <button
+          type="button"
+          class="btn-mini"
+          class:selected={emitTarget === 'js'}
+          onclick={() => (emitTarget = 'js')}
+        >
+          JavaScript (.mjs)
+        </button>
+        <button
+          type="button"
+          class="btn-mini"
+          class:selected={emitTarget === 'c'}
+          onclick={() => (emitTarget = 'c')}
+        >
+          C11 (.c)
+        </button>
+      </div>
+      <div class="compile-actions">
+        <button
+          type="button"
+          class="btn-mini"
+          disabled={!compileResult || !compileResult.code}
+          onclick={handleCopyEmitted}
+        >
+          {copyDone ? '복사됨' : '복사'}
+        </button>
+        <button
+          type="button"
+          class="btn-mini"
+          disabled={!compileResult || !compileResult.code}
+          onclick={handleDownloadEmitted}
+        >
+          다운로드
+        </button>
+      </div>
+    </div>
+
+    {#if compileResult && compileResult.warnings.length > 0}
+      <div class="compile-warn" role="status">
+        {#each compileResult.warnings as warning (warning)}
+          <div>경고: {warning}</div>
+        {/each}
+      </div>
+    {/if}
+
+    <div class="compile-scroll">
+      {#if !compileResult || compileResult.diagnostics.length > 0}
+        <div class="compile-placeholder">
+          문법 에러가 있어 코드를 생성할 수 없습니다. 왼쪽 Diagnostics 패널의 오류를 먼저 수정해 주세요.
+        </div>
+      {:else}
+        <pre class="compile-code">{compileResult.code}</pre>
+      {/if}
     </div>
   </div>
 
@@ -419,6 +546,61 @@
     border: 1px solid var(--border);
     background: var(--bg-surface);
     color: var(--text-primary);
+  }
+
+  .compile-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compile-targets,
+  .compile-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .compile-bar .btn-mini.selected {
+    border-color: var(--text-primary);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+  }
+
+  .compile-warn {
+    padding: 7px 12px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    color: var(--warn);
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  .compile-scroll {
+    background: var(--bg-editor);
+    overflow: auto;
+    max-height: 300px;
+    flex: 1;
+  }
+
+  .compile-placeholder {
+    padding: 14px 12px;
+    color: var(--danger);
+    font-size: 12px;
+  }
+
+  .compile-code {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: pre;
   }
 
   @media (max-width: 720px) {

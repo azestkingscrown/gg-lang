@@ -20,6 +20,15 @@ export { MAX_EXPONENT, tokenize, truncateDisplay } from './lexer.js';
 export { isIncompleteFragment, parse } from './parser.js';
 export { JjeJjeVM } from './vm.js';
 export { encodeBigInt, textToGG } from './transpiler.js';
+export {
+  compileToTarget,
+  emitC,
+  emitCWithWarnings,
+  emitJavaScript,
+  type EmitOptions,
+  type EmitResult,
+  type EmitTarget,
+} from './codegen.js';
 
 export function compile(source: string, options: ParseOptions = {}): CompiledProgram {
   const { tokens, diagnostics } = tokenize(source);

@@ -468,7 +468,7 @@
       }}
       onClearOutput={handleClearOutput}
     />
-    <InspectorTabs {vmState} />
+    <InspectorTabs {vmState} {code} fileName={currentFileName} />
   </div>
 </main>
 

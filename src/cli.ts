@@ -2,7 +2,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { formatDiagnostic, formatTraceEvent, type ErrorStyle } from './cli-format.js';
-import { JjeJjeVM, compile, textToGG } from './core/index.js';
+import {
+  JjeJjeVM,
+  compile,
+  compileToTarget,
+  textToGG,
+  type EmitTarget,
+} from './core/index.js';
 import { runRepl } from './repl.js';
 
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
@@ -48,6 +54,8 @@ function printUsage(): void {
 
 옵션:
   --check                   문법 검사만 수행하고 실행하지 않음
+  --emit <js|c>             독립 실행 가능한 JS(.mjs) 또는 C11(.c) 코드 생성
+  -o, --output <파일>       --emit 출력 파일 경로 지정 (기본값: stdout)
   --trace                   실행 중 각 명령어와 스택 상태를 stderr로 추적
   --error-style <meme|plain> 진단 출력 형식 지정 (기본값: meme)
   --max-steps <N>           최대 실행 스텝 수 지정 (기본 200000)
@@ -59,16 +67,26 @@ function printUsage(): void {
 }
 
 interface ParsedArgs {
-  mode: 'help' | 'version' | 'encode' | 'repl' | 'run';
+  mode: 'help' | 'version' | 'encode' | 'repl' | 'emit' | 'run';
   encodeText?: string;
   hasEncodeArgs?: boolean;
   filePath?: string;
   evalCode?: string;
+  emitTarget?: EmitTarget;
+  outputPath?: string;
   checkOnly: boolean;
   trace: boolean;
   errorStyle: ErrorStyle;
   maxSteps?: number;
   stdinText?: string;
+}
+
+function parseEmitTarget(raw: string): EmitTarget | { error: string } {
+  const lower = raw.toLowerCase();
+  if (lower === 'js' || lower === 'c') {
+    return lower;
+  }
+  return { error: `--emit 타깃은 'js' 또는 'c'만 지원합니다. (입력: ${raw})` };
 }
 
 function parsePositiveInt(raw: string, flagName: string): number | string {
@@ -106,6 +124,8 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
 
   let filePath: string | undefined;
   let evalCode: string | undefined;
+  let emitTarget: EmitTarget | undefined;
+  let outputPath: string | undefined;
   let checkOnly = false;
   let trace = false;
   let errorStyle: ErrorStyle = 'meme';
@@ -135,6 +155,8 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
         isRepl ||
         filePath !== undefined ||
         evalCode !== undefined ||
+        emitTarget !== undefined ||
+        outputPath !== undefined ||
         checkOnly ||
         trace ||
         hasErrorStyleFlag ||
@@ -156,6 +178,28 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
 
     if (!endOfOptions && arg === '--check') {
       checkOnly = true;
+      continue;
+    }
+
+    if (!endOfOptions && (arg === '--emit' || arg.startsWith('--emit='))) {
+      const value = arg.startsWith('--emit=') ? arg.slice('--emit='.length) : argv[++i];
+      if (value === undefined) {
+        return { error: '--emit 뒤에 js 또는 c를 지정해주세요.' };
+      }
+      const parsedTarget = parseEmitTarget(value);
+      if (typeof parsedTarget === 'object') {
+        return parsedTarget;
+      }
+      emitTarget = parsedTarget;
+      continue;
+    }
+
+    if (!endOfOptions && (arg === '-o' || arg === '--output' || arg.startsWith('--output='))) {
+      const value = arg.startsWith('--output=') ? arg.slice('--output='.length) : argv[++i];
+      if (value === undefined) {
+        return { error: `${arg} 뒤에 출력 파일 경로를 지정해주세요.` };
+      }
+      outputPath = value;
       continue;
     }
 
@@ -227,8 +271,8 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   }
 
   if (isRepl) {
-    if (checkOnly || evalCode !== undefined) {
-      return { error: 'repl 모드에서는 --check 또는 -e/--eval 옵션을 사용할 수 없습니다.' };
+    if (checkOnly || evalCode !== undefined || emitTarget !== undefined || outputPath !== undefined) {
+      return { error: 'repl 모드에서는 --check, --emit, -o, -e/--eval 옵션을 사용할 수 없습니다.' };
     }
     return {
       mode: 'repl',
@@ -244,14 +288,24 @@ function parseArgs(argv: string[]): ParsedArgs | { error: string } {
     return { error: '파일 경로와 -e/--eval은 동시에 사용할 수 없습니다.' };
   }
 
+  if (outputPath !== undefined && emitTarget === undefined) {
+    return { error: '-o/--output 옵션은 --emit <js|c>와 함께 사용해야 합니다.' };
+  }
+
+  if (emitTarget !== undefined && checkOnly) {
+    return { error: '--emit 옵션과 --check 옵션은 동시에 사용할 수 없습니다.' };
+  }
+
   if (evalCode === undefined && filePath === undefined) {
     return { error: '실행할 .gg 파일 경로 또는 -e/--eval 코드를 입력해주세요.' };
   }
 
   return {
-    mode: 'run',
+    mode: emitTarget ? 'emit' : 'run',
     filePath,
     evalCode,
+    emitTarget,
+    outputPath,
     checkOnly,
     trace,
     errorStyle,
@@ -330,6 +384,31 @@ async function main(): Promise<number> {
       console.error(`[파일 오류] '${filePath}'를 읽을 수 없습니다: ${msg}`);
       return 1;
     }
+  }
+
+  if (parsed.mode === 'emit' && parsed.emitTarget) {
+    const emitted = compileToTarget(source, parsed.emitTarget, { maxSteps: parsed.maxSteps });
+    if (emitted.diagnostics.length > 0) {
+      for (const diag of emitted.diagnostics) {
+        console.error(formatDiagnostic(diag, parsed.errorStyle));
+      }
+      return 1;
+    }
+    for (const warning of emitted.warnings) {
+      console.error(`[경고] ${warning}`);
+    }
+    if (parsed.outputPath !== undefined) {
+      try {
+        fs.writeFileSync(parsed.outputPath, emitted.code, 'utf8');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[출력 오류] '${parsed.outputPath}'에 쓸 수 없습니다: ${msg}`);
+        return 1;
+      }
+    } else {
+      process.stdout.write(emitted.code);
+    }
+    return 0;
   }
 
   const program = compile(source);
