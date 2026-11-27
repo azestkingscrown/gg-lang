@@ -456,7 +456,17 @@ pub fn emit_c_with_warnings(
         r#"typedef struct { int64_t *data; size_t len; size_t cap; } gg_stack_t;
 typedef struct { int64_t key; int64_t val; uint8_t state; } gg_mem_entry_t;
 typedef struct { gg_mem_entry_t *entries; size_t cap; size_t len; } gg_mem_t;
-typedef struct { bool halted; bool failed; size_t out_units; int last_char; bool has_out; } gg_rt_t;
+typedef struct {
+  bool halted;
+  bool failed;
+  size_t out_units;
+  int last_char;
+  bool has_out;
+  uint64_t max_steps;
+  size_t max_stack;
+  size_t max_memory;
+  size_t max_output;
+} gg_rt_t;
 
 static inline bool gg_fail(gg_rt_t *rt, const char *code, const char *msg, int line, int col) {
   if (!rt->failed) {
@@ -470,10 +480,10 @@ static inline bool gg_fail(gg_rt_t *rt, const char *code, const char *msg, int l
 }
 
 static inline bool gg_push(gg_stack_t *s, gg_rt_t *rt, int64_t v, int line, int col) {
-  if (s->len >= GG_MAX_STACK) { return gg_fail(rt, "RUNTIME_STACK_OVERFLOW", "지~랄 스택이 너무 커졌어요", line, col); }
+  if (s->len >= rt->max_stack) { return gg_fail(rt, "RUNTIME_STACK_OVERFLOW", "지~랄 스택이 너무 커졌어요", line, col); }
   if (s->len == s->cap) {
     size_t ncap = s->cap ? s->cap * 2 : 64;
-    if (ncap > GG_MAX_STACK) ncap = GG_MAX_STACK;
+    if (ncap > rt->max_stack) ncap = rt->max_stack;
     int64_t *nd = (int64_t *)realloc(s->data, ncap * sizeof(int64_t));
     if (!nd) { return gg_fail(rt, "RUNTIME_STACK_OVERFLOW", "메모리 할당 실패", line, col); }
     s->data = nd;
@@ -529,20 +539,22 @@ static inline bool gg_mem_rehash(gg_mem_t *m, size_t ncap) {
 }
 
 static inline bool gg_mem_set(gg_mem_t *m, gg_rt_t *rt, int64_t key, int64_t val, int line, int col) {
+  if (m->cap > 0) {
+    size_t mask = m->cap - 1;
+    size_t idx = gg_hash_i64(key, mask);
+    while (m->entries[idx].state) {
+      if (m->entries[idx].key == key) { m->entries[idx].val = val; return true; }
+      idx = (idx + 1) & mask;
+    }
+  }
+  if (m->len >= rt->max_memory) return gg_fail(rt, "RUNTIME_MEMORY_OVERFLOW", "지~랄 메모리가 너무 많이 찼어요", line, col);
   if (m->cap == 0 && !gg_mem_rehash(m, 64)) return gg_fail(rt, "RUNTIME_MEMORY_OVERFLOW", "메모리 할당 실패", line, col);
+  if ((m->len + 1) * 10 >= m->cap * 7 && !gg_mem_rehash(m, m->cap * 2)) {
+    return gg_fail(rt, "RUNTIME_MEMORY_OVERFLOW", "메모리 재할당 실패", line, col);
+  }
   size_t mask = m->cap - 1;
   size_t idx = gg_hash_i64(key, mask);
-  while (m->entries[idx].state) {
-    if (m->entries[idx].key == key) { m->entries[idx].val = val; return true; }
-    idx = (idx + 1) & mask;
-  }
-  if (m->len >= GG_MAX_MEMORY) return gg_fail(rt, "RUNTIME_MEMORY_OVERFLOW", "지~랄 메모리가 너무 많이 찼어요", line, col);
-  if ((m->len + 1) * 10 >= m->cap * 7) {
-    if (!gg_mem_rehash(m, m->cap * 2)) return gg_fail(rt, "RUNTIME_MEMORY_OVERFLOW", "메모리 재할당 실패", line, col);
-    mask = m->cap - 1;
-    idx = gg_hash_i64(key, mask);
-    while (m->entries[idx].state) idx = (idx + 1) & mask;
-  }
+  while (m->entries[idx].state) idx = (idx + 1) & mask;
   m->entries[idx].key = key;
   m->entries[idx].val = val;
   m->entries[idx].state = 1;
@@ -572,11 +584,10 @@ static inline bool gg_mul(int64_t a, int64_t b, int64_t *out) {
   *out = a * b; return true;
 }
 
-static inline bool gg_print_str(gg_rt_t *rt, const char *s, size_t units, int line, int col) {
-  if (rt->out_units + units > GG_MAX_OUTPUT) {
+static inline bool gg_print_str(gg_rt_t *rt, const char *s, size_t blen, size_t units, int line, int col) {
+  if (rt->out_units + units > rt->max_output) {
     return gg_fail(rt, "RUNTIME_OUTPUT_LIMIT", "지~랄 출력 길이가 최대치를 넘었어요", line, col);
   }
-  size_t blen = strlen(s);
   if (blen > 0) {
     fwrite(s, 1, blen, stdout);
     rt->last_char = (unsigned char)s[blen - 1];
@@ -590,7 +601,7 @@ static inline bool gg_print_int(gg_rt_t *rt, int64_t v, bool newline, int line, 
   char buf[32];
   int n = snprintf(buf, sizeof(buf), newline ? "%" PRId64 "\n" : "%" PRId64, v);
   if (n < 0) return gg_fail(rt, "RUNTIME_OUTPUT_LIMIT", "출력 포맷 실패", line, col);
-  return gg_print_str(rt, buf, (size_t)n, line, col);
+  return gg_print_str(rt, buf, (size_t)n, (size_t)n, line, col);
 }
 
 static inline bool gg_print_char(gg_rt_t *rt, int64_t cp, int line, int col) {
@@ -605,7 +616,7 @@ static inline bool gg_print_char(gg_rt_t *rt, int64_t cp, int line, int col) {
   else if (u <= 0xFFFF) { utf8[len++] = (char)(0xE0 | (u >> 12)); utf8[len++] = (char)(0x80 | ((u >> 6) & 0x3F)); utf8[len++] = (char)(0x80 | (u & 0x3F)); }
   else { utf8[len++] = (char)(0xF0 | (u >> 18)); utf8[len++] = (char)(0x80 | ((u >> 12) & 0x3F)); utf8[len++] = (char)(0x80 | ((u >> 6) & 0x3F)); utf8[len++] = (char)(0x80 | (u & 0x3F)); }
   utf8[len] = '\0';
-  return gg_print_str(rt, utf8, u > 0xFFFF ? 2 : 1, line, col);
+  return gg_print_str(rt, utf8, len, u > 0xFFFF ? 2 : 1, line, col);
 }
 
 static inline bool gg_read_int(gg_rt_t *rt, int64_t *out, int line, int col) {
@@ -613,19 +624,35 @@ static inline bool gg_read_int(gg_rt_t *rt, int64_t *out, int line, int col) {
   do { c = fgetc(stdin); } while (c != EOF && isspace((unsigned char)c));
   if (c == EOF) return gg_fail(rt, "RUNTIME_STDIN_EOF", "예? 입력(stdin)이 비어서 정수를 읽을 수 없어요", line, col);
   bool neg = false;
-  if (c == '-' || c == '+') { neg = (c == '-'); c = fgetc(stdin); if (c == EOF || isspace((unsigned char)c)) return gg_fail(rt, "RUNTIME_INVALID_INT", "예? 정수가 아닌데요?", line, col); }
+  size_t total_chars = 0;
+  if (c == '-' || c == '+') {
+    neg = (c == '-');
+    total_chars = 1;
+    c = fgetc(stdin);
+    if (c == EOF || isspace((unsigned char)c)) {
+      if (c != EOF) ungetc(c, stdin);
+      return gg_fail(rt, "RUNTIME_INVALID_INT", "예? 정수가 아닌데요?", line, col);
+    }
+  }
   uint64_t acc = 0;
   uint64_t limit = neg ? ((uint64_t)INT64_MAX + 1ULL) : (uint64_t)INT64_MAX;
-  size_t digits = 0;
+  bool overflow = false;
   while (c != EOF && !isspace((unsigned char)c)) {
-    if (c < '0' || c > '9') return gg_fail(rt, "RUNTIME_INVALID_INT", "예? 정수가 아닌데요?", line, col);
-    uint64_t d = (uint64_t)(c - '0');
-    if (acc > (limit - d) / 10ULL) return gg_fail(rt, "RUNTIME_BIGINT_OVERFLOW", "지~랄 입력 정수가 int64 범위를 넘었어요", line, col);
-    acc = acc * 10ULL + d;
-    digits++;
-    if (digits > 20000) return gg_fail(rt, "RUNTIME_BIGINT_OVERFLOW", "지~랄 입력 정수가 너무 커요", line, col);
+    if (c < '0' || c > '9') {
+      return gg_fail(rt, "RUNTIME_INVALID_INT", "예? 정수가 아닌데요?", line, col);
+    }
+    total_chars++;
+    if (total_chars > 20000) {
+      overflow = true;
+    } else if (!overflow) {
+      uint64_t d = (uint64_t)(c - '0');
+      if (acc > (limit - d) / 10ULL) overflow = true;
+      else acc = acc * 10ULL + d;
+    }
     c = fgetc(stdin);
   }
+  if (c != EOF) ungetc(c, stdin);
+  if (overflow) return gg_fail(rt, "RUNTIME_BIGINT_OVERFLOW", "지~랄 입력 정수가 int64 범위를 넘었어요", line, col);
   if (neg) { *out = (acc == (uint64_t)INT64_MAX + 1ULL) ? INT64_MIN : -(int64_t)acc; }
   else { *out = (int64_t)acc; }
   return true;
@@ -656,7 +683,7 @@ static inline bool gg_read_char(gg_rt_t *rt, int64_t *out, int line, int col) {
 int main(void) {
   gg_stack_t s = { NULL, 0, 0 };
   gg_mem_t mem = { NULL, 0, 0 };
-  gg_rt_t rt = { false, false, 0, '\n', false };
+  gg_rt_t rt = { false, false, 0, '\n', false, GG_MAX_STEPS, GG_MAX_STACK, GG_MAX_MEMORY, GG_MAX_OUTPUT };
   size_t ip = 0;
   uint64_t steps = 0;"#
         .to_string(),
@@ -689,7 +716,7 @@ int main(void) {
     lines.push("  };".to_string());
     lines.push(String::new());
     lines.push(format!("  while (!rt.halted && ip < {}) {{", instructions.len()));
-    lines.push("    if (steps >= GG_MAX_STEPS) {".to_string());
+    lines.push("    if (steps >= rt.max_steps) {".to_string());
     lines.push("      gg_fail(&rt, \"RUNTIME_STEP_LIMIT\", \"지~랄 실행 횟수가 최대치를 넘었어요\", line_tbl[ip], col_tbl[ip]);".to_string());
     lines.push("      break;".to_string());
     lines.push("    }".to_string());
@@ -720,6 +747,7 @@ int main(void) {
                         "        gg_fail(&rt, \"RUNTIME_BIGINT_OVERFLOW\", \"지~랄 정수가 64비트 범위를 초과했어요 ({})\", {line}, {col});",
                         escape_c_string(&preview)
                     ));
+                    lines.push("        break;".to_string());
                 }
             }
             OpCode::Pop => {

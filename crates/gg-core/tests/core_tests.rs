@@ -427,3 +427,245 @@ fn vm_enforces_dos_limits_and_stdin_cursor() {
     let st2 = vm2.run();
     assert_eq!(st2.output, "20\n");
 }
+
+fn run_node_js_bytes(code: &str, stdin: &[u8]) -> (i32, Vec<u8>, String) {
+    let dir = temp_dir("gg-rust-js-bytes");
+    let _guard = TempCleanup(dir.clone());
+    let file = dir.join("prog.mjs");
+    fs::write(&file, code).unwrap();
+
+    let mut child = Command::new("node")
+        .arg(&file)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    use std::io::Write;
+    child.stdin.as_mut().unwrap().write_all(stdin).unwrap();
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap_or(-1),
+        out.stdout,
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+fn run_cc_c11_bytes(code: &str, stdin: &[u8]) -> (i32, Vec<u8>, String) {
+    let dir = temp_dir("gg-rust-c-bytes");
+    let _guard = TempCleanup(dir.clone());
+    let src = dir.join("prog.c");
+    let bin = dir.join("prog");
+    fs::write(&src, code).unwrap();
+
+    let cc = Command::new("cc")
+        .args(["-std=c11", "-O2", "-Wall", "-Wextra", "-Werror"])
+        .arg(&src)
+        .arg("-o")
+        .arg(&bin)
+        .output()
+        .unwrap();
+    assert!(
+        cc.status.success(),
+        "C11 compilation failed:\n{}",
+        String::from_utf8_lossy(&cc.stderr)
+    );
+
+    let mut child = Command::new(&bin)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    use std::io::Write;
+    child.stdin.as_mut().unwrap().write_all(stdin).unwrap();
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap_or(-1),
+        out.stdout,
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+#[test]
+fn codegen_c11_edge_parity() {
+    // 1. `예?` followed immediately by `아 예?` must preserve trailing whitespace byte (e.g. '\n')
+    let int_then_char = "요이~ 예? 넌 나가라 아 예? 야~~르 줴줴이야";
+    let vm_st = run(
+        int_then_char,
+        VMOptions {
+            stdin: Some("5\nA".to_string()),
+            ..Default::default()
+        },
+    );
+    assert_eq!(vm_st.output, "10\n");
+
+    let js_res = compile_to_target(int_then_char, EmitTarget::Js, EmitOptions::default());
+    let (js_code, js_out, _) = run_node_js(&js_res.code, "5\nA");
+    assert_eq!(js_code, 0);
+    assert_eq!(js_out, "10\n");
+
+    let c_res = compile_to_target(int_then_char, EmitTarget::C, EmitOptions::default());
+    let (c_code, c_out, _) = run_cc_c11(&c_res.code, "5\nA");
+    assert_eq!(c_code, 0);
+    assert_eq!(c_out, "10\n");
+
+    // 2. caesar_cipher.gg with leading space, blank line, and multi-space separator
+    let caesar_src = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/caesar_cipher.gg"),
+    )
+    .unwrap();
+    let caesar_js = compile_to_target(&caesar_src, EmitTarget::Js, EmitOptions::default());
+    let caesar_c = compile_to_target(&caesar_src, EmitTarget::C, EmitOptions::default());
+    for (stdin_case, expected) in [
+        ("3\n Hello", " Khoor"),
+        ("3\n\nHello", "\nKhoor"),
+        ("3  Hello", " Khoor"),
+    ] {
+        let vm_caesar = run(
+            &caesar_src,
+            VMOptions {
+                stdin: Some(stdin_case.to_string()),
+                ..Default::default()
+            },
+        );
+        assert_eq!(vm_caesar.output, expected);
+        let (_, js_o, _) = run_node_js(&caesar_js.code, stdin_case);
+        assert_eq!(js_o, expected);
+        let (_, c_o, _) = run_cc_c11(&caesar_c.code, stdin_case);
+        assert_eq!(c_o, expected);
+    }
+
+    // 3. NUL byte (U+0000) output via `야~르!` preserves exact byte `[65, 0, 66]`
+    let nul_input = "A\0B";
+    let nul_prog = "요이~ 아 예? 야~르! 아 예? 야~르! 아 예? 야~르! 줴줴이야";
+    let vm_nul2 = run(
+        nul_prog,
+        VMOptions {
+            stdin: Some(nul_input.to_string()),
+            ..Default::default()
+        },
+    );
+    assert_eq!(vm_nul2.output.as_bytes(), b"A\0B");
+    let nul_js = compile_to_target(nul_prog, EmitTarget::Js, EmitOptions::default());
+    let (nj_c, nj_out, _) = run_node_js_bytes(&nul_js.code, b"A\0B");
+    assert_eq!(nj_c, 0);
+    assert_eq!(nj_out, b"A\0B");
+    let nul_c = compile_to_target(nul_prog, EmitTarget::C, EmitOptions::default());
+    let (nc_c, nc_out, _) = run_cc_c11_bytes(&nul_c.code, b"A\0B");
+    assert_eq!(nc_c, 0);
+    assert_eq!(nc_out, b"A\0B");
+
+    // 4. Zero-limit C11 compiles cleanly with -Werror and triggers expected error codes
+    let limit_cases = [
+        (
+            "요이~ 엄. 야~~르 줴줴이야",
+            EmitOptions {
+                max_steps: Some(0),
+                ..Default::default()
+            },
+            "RUNTIME_STEP_LIMIT",
+        ),
+        (
+            "요이~ 엄. 줴줴이야",
+            EmitOptions {
+                max_stack_size: Some(0),
+                ..Default::default()
+            },
+            "RUNTIME_STACK_OVERFLOW",
+        ),
+        (
+            "요이~ 엄. 엄. 쥐랄! 줴줴이야",
+            EmitOptions {
+                max_memory_size: Some(0),
+                ..Default::default()
+            },
+            "RUNTIME_MEMORY_OVERFLOW",
+        ),
+        (
+            "요이~ 엄. 야~르 줴줴이야",
+            EmitOptions {
+                max_output_length: Some(0),
+                ..Default::default()
+            },
+            "RUNTIME_OUTPUT_LIMIT",
+        ),
+    ];
+    for (src, opts, expected_err) in limit_cases {
+        let c_lim = compile_to_target(src, EmitTarget::C, opts);
+        let (rc, _, err) = run_cc_c11(&c_lim.code, "");
+        assert_ne!(rc, 0);
+        assert!(err.contains(expected_err), "got stderr: {err}");
+    }
+
+    // 5. Non-digit after >20-digit token => RUNTIME_INVALID_INT, '-' + 20,000 zeros => RUNTIME_BIGINT_OVERFLOW
+    let read_prog = "요이~ 예? 야~~르 줴줴이야";
+    let read_js = compile_to_target(read_prog, EmitTarget::Js, EmitOptions::default());
+    let read_c = compile_to_target(read_prog, EmitTarget::C, EmitOptions::default());
+
+    let bad_mixed = "99999999999999999999abc";
+    assert_eq!(
+        run(
+            read_prog,
+            VMOptions {
+                stdin: Some(bad_mixed.to_string()),
+                ..Default::default()
+            }
+        )
+        .error
+        .unwrap()
+        .code,
+        "RUNTIME_INVALID_INT"
+    );
+    let (rc_j, _, err_j) = run_node_js(&read_js.code, bad_mixed);
+    assert_ne!(rc_j, 0);
+    assert!(err_j.contains("RUNTIME_INVALID_INT"));
+    let (rc_c, _, err_c) = run_cc_c11(&read_c.code, bad_mixed);
+    assert_ne!(rc_c, 0);
+    assert!(err_c.contains("RUNTIME_INVALID_INT"));
+
+    let neg_zeros = format!("-{}", "0".repeat(20_000));
+    assert_eq!(
+        run(
+            read_prog,
+            VMOptions {
+                stdin: Some(neg_zeros.clone()),
+                ..Default::default()
+            }
+        )
+        .error
+        .unwrap()
+        .code,
+        "RUNTIME_BIGINT_OVERFLOW"
+    );
+    let (rc_j2, _, err_j2) = run_node_js(&read_js.code, &neg_zeros);
+    assert_ne!(rc_j2, 0);
+    assert!(err_j2.contains("RUNTIME_BIGINT_OVERFLOW"));
+    let (rc_c2, _, err_c2) = run_cc_c11(&read_c.code, &neg_zeros);
+    assert_ne!(rc_c2, 0);
+    assert!(err_c2.contains("RUNTIME_BIGINT_OVERFLOW"));
+
+    // 6. INT64 overflow checks in C11 (+, -, *, INT64_MIN / -1, INT64_MIN % -1)
+    let int64_min_div = "요이~ 예? 예? 지~~~랄 야~~르 줴줴이야";
+    let div_c = compile_to_target(int64_min_div, EmitTarget::C, EmitOptions::default());
+    let (rc_d, _, err_d) = run_cc_c11(&div_c.code, "-9223372036854775808 -1");
+    assert_ne!(rc_d, 0);
+    assert!(err_d.contains("RUNTIME_BIGINT_OVERFLOW"));
+
+    let int64_min_mod = "요이~ 예? 예? 지~~~~랄 야~~르 줴줴이야";
+    let mod_c = compile_to_target(int64_min_mod, EmitTarget::C, EmitOptions::default());
+    let (rc_m, out_m, _) = run_cc_c11(&mod_c.code, "-9223372036854775808 -1");
+    assert_eq!(rc_m, 0);
+    assert_eq!(out_m, "0\n");
+
+    let add_ovf_c = compile_to_target(
+        "요이~ 예? 예? 지랄 야~~르 줴줴이야",
+        EmitTarget::C,
+        EmitOptions::default(),
+    );
+    let (rc_a, _, err_a) = run_cc_c11(&add_ovf_c.code, "9223372036854775807 1");
+    assert_ne!(rc_a, 0);
+    assert!(err_a.contains("RUNTIME_BIGINT_OVERFLOW"));
+}

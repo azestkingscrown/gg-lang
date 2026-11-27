@@ -44,6 +44,52 @@ impl Drop for TempCleanup {
     }
 }
 
+fn run_cc_c11(code: &str, stdin: &str) -> (i32, String, String) {
+    let dir = temp_dir("gg-conf-c");
+    let _guard = TempCleanup(dir.clone());
+    let src = dir.join("prog.c");
+    let bin = dir.join("prog");
+    fs::write(&src, code).unwrap();
+
+    let cc = Command::new("cc")
+        .args(["-std=c11", "-O2", "-Wall", "-Wextra", "-Werror"])
+        .arg(&src)
+        .arg("-o")
+        .arg(&bin)
+        .output()
+        .unwrap();
+    assert!(
+        cc.status.success(),
+        "C11 compilation failed:\n{}",
+        String::from_utf8_lossy(&cc.stderr)
+    );
+
+    let mut child = Command::new(&bin)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    use std::io::Write;
+    child.stdin.as_mut().unwrap().write_all(stdin.as_bytes()).unwrap();
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8(out.stdout).unwrap(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
 #[test]
 fn conformance_suite_passes_on_rust_vm_and_js_codegen() {
     let spec_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -53,12 +99,7 @@ fn conformance_suite_passes_on_rust_vm_and_js_codegen() {
     let suite: ConformanceSuite = serde_json::from_str(&raw).unwrap();
     assert!(suite.cases.len() >= 30);
 
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let js_dir = std::env::temp_dir().join(format!("gg-conf-rust-{}-{nanos}", std::process::id()));
-    fs::create_dir_all(&js_dir).unwrap();
+    let js_dir = temp_dir("gg-conf-rust");
     let _cleanup = TempCleanup(js_dir.clone());
 
     for tc in &suite.cases {
@@ -100,18 +141,71 @@ fn conformance_suite_passes_on_rust_vm_and_js_codegen() {
             },
         );
 
+        let js = compile_to_target(
+            &tc.code,
+            EmitTarget::Js,
+            EmitOptions {
+                max_steps,
+                ..Default::default()
+            },
+        );
+        let js_file = js_dir.join(format!("{}.mjs", tc.id));
+        fs::write(&js_file, &js.code).unwrap();
+        let mut js_child = Command::new("node")
+            .arg(&js_file)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        js_child.stdin.as_mut().unwrap().write_all(stdin.as_bytes()).unwrap();
+        let js_out = js_child.wait_with_output().unwrap();
+        let js_stdout = String::from_utf8(js_out.stdout).unwrap();
+        let js_stderr = String::from_utf8_lossy(&js_out.stderr).into_owned();
+
+        let c_res = compile_to_target(
+            &tc.code,
+            EmitTarget::C,
+            EmitOptions {
+                max_steps,
+                ..Default::default()
+            },
+        );
+
         if tc.expected.status == "runtime_error" {
             let err = state
                 .error
                 .as_ref()
                 .unwrap_or_else(|| panic!("{} expected runtime error", tc.id));
             assert!(err.message.contains("터져서 없어짐 수고하세요"));
+            assert!(!js_out.status.success(), "{} js expected failure", tc.id);
+            assert!(js_stderr.contains("터져서 없어짐 수고하세요"));
+
+            let (c_code, _, c_err) = run_cc_c11(&c_res.code, &stdin);
+            assert_ne!(c_code, 0, "{} c11 expected failure", tc.id);
+            assert!(c_err.contains("터져서 없어짐 수고하세요"));
+
             if let Some(expected_codes) = &tc.expected.error_codes {
                 assert!(
                     expected_codes.contains(&err.code),
                     "{} unexpected runtime code {}",
                     tc.id,
                     err.code
+                );
+                assert!(
+                    expected_codes.iter().any(|code| js_stderr.contains(code)),
+                    "{} js stderr missing {:?}: {}",
+                    tc.id,
+                    expected_codes,
+                    js_stderr
+                );
+                assert!(
+                    expected_codes.iter().any(|code| c_err.contains(code)),
+                    "{} c11 stderr missing {:?}: {}",
+                    tc.id,
+                    expected_codes,
+                    c_err
                 );
             }
         } else {
@@ -129,35 +223,21 @@ fn conformance_suite_passes_on_rust_vm_and_js_codegen() {
                 assert_eq!(&got_stack, exp_stack, "{} stack mismatch", tc.id);
             }
 
-            // Also verify --emit js produces identical stdout
-            let js = compile_to_target(
-                &tc.code,
-                EmitTarget::Js,
-                EmitOptions {
-                    max_steps,
-                    ..Default::default()
-                },
-            );
-            let js_file = js_dir.join(format!("{}.mjs", tc.id));
-            fs::write(&js_file, &js.code).unwrap();
-            let mut child = Command::new("node")
-                .arg(&js_file)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .unwrap();
-            use std::io::Write;
-            child.stdin.as_mut().unwrap().write_all(stdin.as_bytes()).unwrap();
-            let out = child.wait_with_output().unwrap();
-            assert!(out.status.success(), "{} js exit failure", tc.id);
+            assert!(js_out.status.success(), "{} js exit failure: {js_stderr}", tc.id);
             if let Some(exp_out) = &tc.expected.output {
-                assert_eq!(
-                    String::from_utf8(out.stdout).unwrap(),
-                    *exp_out,
-                    "{} js output mismatch",
-                    tc.id
-                );
+                assert_eq!(&js_stdout, exp_out, "{} js output mismatch", tc.id);
+            }
+
+            if c_res.warnings.is_empty() {
+                let (c_code, c_stdout, c_stderr) = run_cc_c11(&c_res.code, &stdin);
+                assert_eq!(c_code, 0, "{} c11 failed: {c_stderr}", tc.id);
+                if let Some(exp_out) = &tc.expected.output {
+                    assert_eq!(&c_stdout, exp_out, "{} c11 output mismatch", tc.id);
+                }
+            } else {
+                let (c_code, _, c_stderr) = run_cc_c11(&c_res.code, &stdin);
+                assert_ne!(c_code, 0, "{} c11 expected 64-bit overflow failure", tc.id);
+                assert!(c_stderr.contains("RUNTIME_BIGINT_OVERFLOW"));
             }
         }
     }
