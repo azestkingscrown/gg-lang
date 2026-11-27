@@ -1,6 +1,6 @@
 # 줴줴랭 (`gg-lang`) 언어 중립 적합성 테스트 규격 (`spec/`)
 
-[`conformance.json`](conformance.json)은 TypeScript 이외의 언어(Rust, Go, Python, C 등)로 줴줴랭 인터프리터·컴파일러를 구현할 때 사양 준수 여부를 검증하기 위한 언어 중립 테스트 벡터 모음입니다.
+[`conformance.json`](conformance.json)은 레퍼런스 Rust 구현([`crates/gg-core/`](../crates/gg-core/)) 및 타 언어(Go, Python, C, TypeScript 등)로 줴줴랭 인터프리터·컴파일러를 구현할 때 사양 준수 여부를 검증하기 위한 언어 중립 테스트 벡터 모음입니다.
 
 ## JSON 스키마
 

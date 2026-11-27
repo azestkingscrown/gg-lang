@@ -95,7 +95,7 @@
 
 ### 4.1 실행 상태 및 기본 제한
 - 레퍼런스 구현([`crates/gg-core/src/vm.rs`](crates/gg-core/src/vm.rs))은 Rust `Vec<BigInt>` 스택과 `BTreeMap<BigInt, BigInt>` 힙을 사용하며, 네이티브 CLI(`gg-cli`)와 브라우저 WebAssembly(`gg-wasm`)가 동일한 VM 상태 머신을 공유합니다.
-- 상태: `ip` (0부터 시작), `stack: BigInt[]`, `memory: Map<BigInt, BigInt>`, `stdinPos`, `output: string`, `steps: number`, `halted: boolean`, `error: Diagnostic | null`.
+- 상태: `ip` (0부터 시작), `stack: Vec<BigInt>` (JSON/WASM 경계에서는 10진수 문자열 배열 + JS `bigint[]`로 직렬화), `memory: BTreeMap<BigInt, BigInt>`, `stdinPos`, `output: String`, `steps: usize`, `halted: bool`, `error: Option<Diagnostic>`.
 - 기본 안전 제한(`VMOptions`):
   - `maxSteps`: `200,000`
   - `maxStackSize`: `100,000`
@@ -108,14 +108,14 @@
 - **이항 연산(`ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `EQ`, `LT`, `GT`)**: 스택 `[..., a, b]`에서 `a`가 왼쪽 피연산자, `b`가 오른쪽(TOP)입니다.
 - **정수 나눗셈·나머지**: JavaScript `BigInt`와 동일하게 **0 방향 절사(truncation toward zero)** 를 사용합니다 (`-7 / 2 = -3`, `-7 % 2 = -1`). `b == 0`이면 `RUNTIME_DIV_ZERO`.
 - **메모리 (`STORE` / `LOAD`)**:
-  - `STORE`: 스택 `[..., val, addr]` (`addr`이 TOP)를 소비해 `memory.set(addr, val)` 수행. 음수 주소 허용.
-  - `LOAD`: TOP `addr`을 소비해 `memory.get(addr) ?? 0n`을 push.
+  - `STORE`: 스택 `[..., val, addr]` (`addr`이 TOP)를 소비해 `memory.insert(addr, val)` 수행. 음수 주소 허용.
+  - `LOAD`: TOP `addr`을 소비해 `memory[addr]`(미초기화 시 `0`)을 push.
 - **제어 흐름**:
-  - `JZ target` (`IF`): TOP을 **pop**한 값이 `0n`이면 `ip = target`, 아니면 `ip + 1`.
-  - `JZ_PEEK target` (`WHILE`): TOP을 **pop하지 않고** 확인하여 `0n`이면 `ip = target`, 아니면 `ip + 1`.
+  - `JZ target` (`IF`): TOP을 **pop**한 값이 `0`이면 `ip = target`, 아니면 `ip + 1`.
+  - `JZ_PEEK target` (`WHILE`): TOP을 **pop하지 않고** 확인하여 `0`이면 `ip = target`, 아니면 `ip + 1`.
 - **입출력**:
   - `INPUT_INT`: 공백 스킵 후 공백 전까지 한 토큰 읽어 `/^[+-]?\d+$/` 파싱. EOF면 `RUNTIME_STDIN_EOF`, 정수가 아니면 `RUNTIME_INVALID_INT`.
-  - `INPUT_CHAR`: 현재 위치의 유니코드 코드포인트 1개를 push (`> 0xFFFF` 서로게이트 쌍은 1글자로 소비). EOF 시 `-1n` push.
+  - `INPUT_CHAR`: 현재 위치의 유니코드 코드포인트 1개를 push (`> 0xFFFF` 서로게이트 쌍은 1글자로 소비). EOF 시 `-1` push.
   - `PRINT_INT` / `PRINT_INT_LN` / `PRINT_CHAR`: **먼저 출력 길이/유효 코드포인트 검사를 통과한 뒤에만** 스택에서 값을 pop하고 `ip`를 증가시킵니다 (`PRINT_CHAR`는 `0 <= cp <= 0x10FFFF` 및 서로게이트 `0xD800..0xDFFF` 제외).
 
 ### 4.3 런타임 에러 계약
@@ -130,12 +130,12 @@
 | --- | --- | --- |
 | 정수 타입 | `BigInt` (65,536비트 제한 포함 VM 100% 동일) | `int64_t` (부호 있는 64비트, 모든 산술 오버플로 안전 검사) |
 | 힙 메모리 | JS `Map<bigint, bigint>` | 오픈 어드레싱 선형 조사 해시 테이블 (`int64_t → int64_t`) |
-| UTF-8 입출력 | Node 문자열 `codePointAt` / `fromCodePoint` | ISO C11 `fgetc` / `fwrite` 기반 UTF-8 1~4바이트 코덱 |
-| 외부 의존성 | Node 내장 `node:fs` (입력 사용 시만) | 없음 (`cc -std=c11 -O2 -Wall -Wextra -Werror` 무경고) |
+| UTF-8 입출력 | Node 문자열 `codePointAt` / `fromCodePoint` (UTF-8 `\s` 공백) | ISO C11 `fgetc`/`ungetc`/`fwrite` UTF-8 1~4바이트 코덱 (`NUL` 보존, 정수 입력 공백은 `isspace` ASCII 기준) |
+| 외부 의존성 | Node 내장 `node:fs` (입력 사용 시만) | 없음 (`cc -std=c11 -O2 -Wall -Wextra -Werror` 무경고, 0 상한 포함) |
 | 대용량 리터럴 | 전 범위 실행 | `int64_t` 범위 초과 시 컴파일 경고 + 런타임 `RUNTIME_BIGINT_OVERFLOW` |
 
 ---
 
 ## 6. 타 언어 포팅 및 적합성 테스트
 
-새로운 구현체(Rust, Python, Go 등)를 제작할 때는 [`spec/conformance.json`](spec/conformance.json)의 테스트 벡터를 기준으로 어휘·구문·실행 결과를 검증할 수 있습니다. 스키마 상세는 [`spec/README.md`](spec/README.md)를 참고하세요.
+타 언어 구현체(Python, Go, Zig, TypeScript 등)를 제작할 때는 [`spec/conformance.json`](spec/conformance.json)의 테스트 벡터를 기준으로 어휘·구문·실행 결과를 검증할 수 있습니다. 스키마 상세는 [`spec/README.md`](spec/README.md)를 참고하세요.

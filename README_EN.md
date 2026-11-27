@@ -16,7 +16,7 @@ A **stack-based esoteric programming language (Esolang)** inspired by the Korean
 
 ### 1. Build & Run Native Rust CLI (`gg`)
 
-Requires a recent Rust toolchain (`cargo`):
+Requires Rust 1.85+ (`edition = "2024"` / `cargo`):
 
 ```bash
 cargo build --release -p gg-cli
@@ -71,7 +71,7 @@ println!("{}", c_res.code);
 
 ### 3. Build WASM Engine, Run Tests & Static Web Playground
 
-Requires Node.js 20+, `rustup target add wasm32-unknown-unknown`, and `wasm-bindgen-cli 0.2.130`:
+Requires Node.js 22.17+ (24+ recommended), Rust 1.85+ (`edition = "2024"`, `rustup target add wasm32-unknown-unknown`), and `wasm-bindgen-cli 0.2.130`:
 
 ```bash
 npm install

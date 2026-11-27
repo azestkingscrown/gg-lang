@@ -43,7 +43,7 @@ printf "5\n5 3 -2 9 0" | /tmp/sort
 | 파일 | 설명 | 표준 입력 예시 | 기대 출력 |
 | --- | --- | --- | --- |
 | [`reverse.gg`](reverse.gg) | `아 예?` + EOF(`-1`) 감지로 유니코드 문자열 역순 출력 | `줴줴🔥ABC` | `CBA🔥줴줴` |
-| [`99bottles.gg`](99bottles.gg) | `N`병부터 `0`까지 단·복수 분기 포함 99 Bottles 가사 출력 | `2` | 2절 영문 가사 |
+| [`99bottles.gg`](99bottles.gg) | `N`병부터 `0`까지 단·복수 분기 포함 99 Bottles 가사 출력 | `3` | 3절 영문 가사 |
 | [`palindrome.gg`](palindrome.gg) | `아 예?` + `CONTINUE` + 투 포인터로 유니코드 회문 판별 | `기러기` | `1` |
 | [`caesar_cipher.gg`](caesar_cipher.gg) | 첫 줄 이동량 `k`만큼 영문자 시저 암호 변환 (한글/기호 유지) | `3\nHello, 줴줴!` | `Khoor, 줴줴!` |
 | [`rpn_calc.gg`](rpn_calc.gg) | Lookahead 토크나이징 + 힙 스택 기반 후위 표기식(`+ - * / %`) 계산기 | `3 4 + 2 * 7 -` | `7` |
