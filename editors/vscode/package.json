@@ -5,6 +5,10 @@
   "version": "1.2.0",
   "publisher": "azestkingscrown",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azestkingscrown/gg-lang.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

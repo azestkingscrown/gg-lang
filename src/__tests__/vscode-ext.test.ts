@@ -64,16 +64,27 @@ describe('VS Code Extension (editors/vscode)', () => {
     expect(fs.existsSync(grammarPath)).toBe(true);
     expect(fs.existsSync(snippetsPath)).toBe(true);
 
+    expect(fs.existsSync(path.join(VSCODE_DIR, 'LICENSE'))).toBe(true);
+    expect((pkg as { repository?: { url?: string } }).repository?.url).toContain('gg-lang');
+
     const langCfg = JSON.parse(fs.readFileSync(langCfgPath, 'utf8')) as {
       comments: { lineComment: string };
       folding: { markers: { start: string; end: string } };
       indentationRules: { increaseIndentPattern: string; decreaseIndentPattern: string };
     };
     expect(langCfg.comments.lineComment).toBe('//');
-    expect(() => new RegExp(langCfg.folding.markers.start, 'u')).not.toThrow();
-    expect(() => new RegExp(langCfg.folding.markers.end, 'u')).not.toThrow();
-    expect(() => new RegExp(langCfg.indentationRules.increaseIndentPattern, 'u')).not.toThrow();
-    expect(() => new RegExp(langCfg.indentationRules.decreaseIndentPattern, 'u')).not.toThrow();
+    const foldStart = new RegExp(langCfg.folding.markers.start, 'u');
+    const foldEnd = new RegExp(langCfg.folding.markers.end, 'u');
+    const indentInc = new RegExp(langCfg.indentationRules.increaseIndentPattern, 'u');
+    const indentDec = new RegExp(langCfg.indentationRules.decreaseIndentPattern, 'u');
+
+    // Single-line blocks must not open folding/indent; mid-line & standard blocks must
+    expect(foldStart.test('아뇨아뇨? 엄. 아뇨아뇨!')).toBe(false);
+    expect(indentInc.test('아뇨아뇨? 엄. 아뇨아뇨!')).toBe(false);
+    expect(indentInc.test('엄. 아뇨아뇨?')).toBe(true);
+    expect(foldStart.test('아뇨아뇨~')).toBe(true);
+    expect(foldEnd.test('  아뇨아뇨!')).toBe(true);
+    expect(indentDec.test('  아뇨아뇨')).toBe(true);
 
     const snippets = JSON.parse(fs.readFileSync(snippetsPath, 'utf8')) as Record<
       string,
@@ -108,7 +119,19 @@ describe('VS Code Extension (editors/vscode)', () => {
     expect(matchFirstRule(grammar, '쥐~~~~랄')).toBe('entity.name.function.stack.gg');
     expect(matchFirstRule(grammar, '어엄...')).toBe('constant.numeric.gg');
     expect(matchFirstRule(grammar, '엄')).toBe('constant.numeric.gg');
-    expect(matchFirstRule(grammar, '엄...//붙은주석')).toBe('comment.line.double-slash.gg');
+    expect(matchFirstRule(grammar, '아\u000B예?')).toBe('support.function.io.gg');
+    expect(matchFirstRule(grammar, '넌\u000C나가라!')).toBe('keyword.control.stack.gg');
+
+    // Verify attached inline comment splits into both #numbers (at 0) and #comments (at 4)
+    const attachedLine = '엄...//붙은주석';
+    const numRule = new RegExp(grammar.repository.numbers.patterns[0].match!, 'u');
+    const cmtRule = new RegExp(grammar.repository.comments.patterns[0].match!, 'u');
+    const numMatch = attachedLine.match(numRule);
+    const cmtMatch = attachedLine.match(cmtRule);
+    expect(numMatch?.[0]).toBe('엄...');
+    expect(numMatch?.index).toBe(0);
+    expect(cmtMatch?.[0]).toBe('//붙은주석');
+    expect(cmtMatch?.index).toBe(4);
 
     // Invalid literals & excess tildes must fall into invalid.illegal.gg
     expect(matchFirstRule(grammar, '엄.,')).toBe('invalid.illegal.gg');
