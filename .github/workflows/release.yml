@@ -1,0 +1,129 @@
+name: Release CLI Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build (e.g. v1.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.asset_suffix }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset_suffix: linux-x86_64
+            archive: tar.gz
+            bin_name: gg
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset_suffix: linux-aarch64
+            archive: tar.gz
+            bin_name: gg
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset_suffix: macos-aarch64
+            archive: tar.gz
+            bin_name: gg
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_suffix: windows-x86_64
+            archive: zip
+            bin_name: gg.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test and build gg-cli
+        shell: bash
+        run: |
+          cargo test -p gg-cli --target ${{ matrix.target }}
+          cargo build --release -p gg-cli --target ${{ matrix.target }}
+          BIN="target/${{ matrix.target }}/release/${{ matrix.bin_name }}"
+          "$BIN" --version
+          OUT="$("$BIN" examples/hello.gg)"
+          echo "Smoke output: $OUT"
+          test "$OUT" = "Hello, World!"
+
+      - name: Stage release files
+        shell: bash
+        run: |
+          mkdir -p stage release-assets
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "stage/${{ matrix.bin_name }}"
+          cp LICENSE README.md README_EN.md "stage/"
+
+      - name: Package archive (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: tar -czf "release-assets/gg-${TAG}-${{ matrix.asset_suffix }}.tar.gz" -C stage .
+
+      - name: Package archive (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path stage/* -DestinationPath "release-assets/gg-${{ env.TAG }}-${{ matrix.asset_suffix }}.zip" -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gg-${{ matrix.asset_suffix }}
+          path: release-assets/*
+
+  publish:
+    name: Publish Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums and upload assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd artifacts
+          sha256sum gg-* > SHA256SUMS.txt
+          ls -lh
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" gg-* SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" gg-* SHA256SUMS.txt --title "$TAG" --generate-notes
+          fi
