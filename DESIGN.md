@@ -91,16 +91,17 @@
 
 ---
 
-## 4. VM 실행 의미론 (`JjeJjeVM`)
+## 4. VM 실행 의미론 (`JjeJjeVM` / `crates/gg-core`)
 
 ### 4.1 실행 상태 및 기본 제한
-- 상태: `ip` (0부터 시작), `stack: bigint[]`, `memory: Map<bigint, bigint>`, `stdinPos`, `output: string`, `steps: number`, `halted: boolean`, `error: Diagnostic | null`.
+- 레퍼런스 구현([`crates/gg-core/src/vm.rs`](crates/gg-core/src/vm.rs))은 Rust `Vec<BigInt>` 스택과 `BTreeMap<BigInt, BigInt>` 힙을 사용하며, 네이티브 CLI(`gg-cli`)와 브라우저 WebAssembly(`gg-wasm`)가 동일한 VM 상태 머신을 공유합니다.
+- 상태: `ip` (0부터 시작), `stack: BigInt[]`, `memory: Map<BigInt, BigInt>`, `stdinPos`, `output: string`, `steps: number`, `halted: boolean`, `error: Diagnostic | null`.
 - 기본 안전 제한(`VMOptions`):
   - `maxSteps`: `200,000`
   - `maxStackSize`: `100,000`
   - `maxMemorySize`: `100,000`
   - `maxBigIntBits`: `65,536` 비트
-  - `maxOutputLength`: `1,000,000` 문자(UTF-16 코드 단위)
+  - `maxOutputLength`: `1,000,000` 문자(UTF-16 코드 단위 기준, 브라우저·JS 타깃과 동일)
   - `MAX_STDIN_INT_DIGITS`: `20,000` 자리
 
 ### 4.2 주요 명령 동작 규칙

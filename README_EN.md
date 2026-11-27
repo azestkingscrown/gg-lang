@@ -3,73 +3,83 @@
 > **Live Web Playground:** https://azestkingscrown.github.io/gg-lang/  
 > **Language:** [한국어](README.md) | English
 
-A **stack-based esoteric programming language (Esolang)** inspired by the Korean *"Wait? Um no no it's JjeJje"* meme set — paired with a SvelteKit Web Playground, interactive CLI REPL, execution tracer, JavaScript/C11 compilers, and a language-agnostic conformance suite.
+A **stack-based esoteric programming language (Esolang)** inspired by the Korean *"Wait? Um no no it's JjeJje"* meme set — implemented with a **100% Rust core engine & native CLI** (`gg-core` / `gg-cli`), **WebAssembly browser runtime** (`gg-wasm`), SvelteKit Web Playground, execution tracer, JavaScript/C11 compilers, and a language-agnostic conformance suite.
 
 - **File Extension**: `.gg`
-- **Execution Model**: Arbitrary-precision `BigInt` stack + `Map<bigint, bigint>` heap VM (`JjeJjeVM`)
+- **Execution Model**: Rust arbitrary-precision `BigInt` (`num-bigint`) stack + `BTreeMap<BigInt, BigInt>` heap VM (`JjeJjeVM`), compiled both to native `gg` CLI and browser `.wasm`
 - **Strict Static Diagnostics**: Collects unknown tokens, typos with fix hints, mixed number signs, and unmatched control blocks before execution (`//` single-line comments supported)
-- **Web Playground**: SvelteKit 3 + Svelte 5 warm dark terminal UI, Web Worker async run/stop, step & autoplay debugger, stack/heap inspector, live **Compile (JS / C11)** tab, URL sharing (`#code=...`), `.gg` import/export, and text → `.gg` encoder
+- **Web Playground**: SvelteKit 3 + Svelte 5 warm dark terminal UI powered by `gg-wasm`, Web Worker async run/stop, step & autoplay debugger, stack/heap inspector, live **Compile (JS / C11)** tab, URL sharing (`#code=...`), `.gg` import/export, and text → `.gg` encoder
 
 ---
 
 ## Quick Start
 
-### 1. Run via CLI / Global Package
+### 1. Build & Run Native Rust CLI (`gg`)
 
-Build the Node CLI package (`dist-pkg/cli.js`, exposed via `package.json` `bin` as `gg` and `gg-lang`):
+Requires a recent Rust toolchain (`cargo`):
 
 ```bash
-npm install
-npm run build:pkg
+cargo build --release -p gg-cli
+# or: npm run build:cli
 ```
 
 Run programs, inspect syntax, trace steps, start the REPL, or compile to JS/C:
 
 ```bash
 # Run a .gg file
-node dist-pkg/cli.js examples/hello.gg
-printf "48 18" | node dist-pkg/cli.js examples/gcd.gg
+./target/release/gg examples/hello.gg
+printf "48 18" | ./target/release/gg examples/gcd.gg
 
 # Or via npm script during development
 npm run gg -- examples/fibonacci.gg
 
 # Interactive REPL (keeps stack & heap across lines, :stack, :mem, :reset, :trace, :q)
-npm run gg -- repl
+./target/release/gg repl
 
 # Step-by-step trace & plain English error style
-npm run gg -- -e "요이~ 엄... 엄.. 지랄 야~~르 줴줴이야" --trace
-npm run gg -- -e "요이~ 어엄 줴줴이야" --error-style plain
+./target/release/gg -e "요이~ 엄... 엄.. 지랄 야~~르 줴줴이야" --trace
+./target/release/gg -e "요이~ 어엄 줴줴이야" --error-style plain
 
 # Syntax check only / inline eval / text -> .gg encoder
-npm run gg -- examples/sort.gg --check
-npm run gg -- -e "요이~ 예? 예? 지랄 야~~르 줴줴이야" --stdin "15 27"
-npm run gg -- --encode "Hello!"
+./target/release/gg examples/sort.gg --check
+./target/release/gg -e "요이~ 예? 예? 지랄 야~~르 줴줴이야" --stdin "15 27"
+./target/release/gg --encode "Hello!"
 
 # Compile .gg -> standalone JavaScript (.mjs) or ISO C11 (.c)
-npm run gg -- examples/rpn_calc.gg --emit js -o /tmp/rpn.mjs && printf "3 4 + 2 * 7 -" | node /tmp/rpn.mjs
-npm run gg -- examples/sort.gg --emit c -o /tmp/sort.c && cc -std=c11 -O2 /tmp/sort.c -o /tmp/sort
+./target/release/gg examples/rpn_calc.gg --emit js -o /tmp/rpn.mjs && printf "3 4 + 2 * 7 -" | node /tmp/rpn.mjs
+./target/release/gg examples/sort.gg --emit c -o /tmp/sort.c && cc -std=c11 -O2 /tmp/sort.c -o /tmp/sort
 printf "5\n5 3 -2 9 0" | /tmp/sort
 ```
 
-### 2. Library API (`exports`)
+### 2. Rust Crate API (`gg-core`)
 
-```ts
-import { compile, run, compileToTarget, textToGG } from 'gg-lang';
+```rust
+use gg_core::{EmitOptions, EmitTarget, VMOptions, compile_to_target, run};
 
-const state = run('요이~ 예? 예? 지랄 야~~르 줴줴이야', { stdin: '15 27' });
-console.log(state.output); // "42\n"
+let state = run(
+    "요이~ 예? 예? 지랄 야~~르 줴줴이야",
+    VMOptions {
+        stdin: Some("15 27".to_string()),
+        ..Default::default()
+    },
+);
+println!("{}", state.output); // "42\n"
 
-const cResult = compileToTarget('요이~ 엄..... 야~~르 줴줴이야', 'c');
-console.log(cResult.code);
+let c_res = compile_to_target("요이~ 엄..... 야~~르 줴줴이야", EmitTarget::C, EmitOptions::default());
+println!("{}", c_res.code);
 ```
 
-### 3. Run Tests & Static Web Build
+### 3. Build WASM Engine, Run Tests & Static Web Playground
+
+Requires Node.js 20+, `rustup target add wasm32-unknown-unknown`, and `wasm-bindgen-cli 0.2.130`:
 
 ```bash
-npm test            # svelte-kit sync + Vitest suite (core, CLI, REPL, codegen, 16 examples, conformance, VS Code grammar)
-npm run build:pkg   # Compile Node CLI & TypeScript declarations into dist-pkg/
-npm run typecheck   # svelte-check + tsconfig.node.json
-npm run build       # Full typecheck + static site output to dist/
+npm install
+cargo test --workspace   # Rust unit, 34 conformance vectors & 16 examples across VM/JS/C11
+npm run build:wasm       # Build crates/gg-wasm -> src/lib/wasm-pkg/
+npm test                 # svelte-kit sync + Vitest (WASM browser bridge + VS Code grammar)
+npm run typecheck        # svelte-check + tsconfig.node.json
+npm run build            # Full typecheck + static site output to dist/
 ```
 
 ---

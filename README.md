@@ -6,18 +6,21 @@
 **"예? 엄 아뇨아뇨 줴줴이야"** 밈 8종 세트에서 탄생한 **스택 기반 난해한 프로그래밍 언어(Esolang)** 와 **SvelteKit 웹 플레이그라운드**입니다.
 
 - **파일 확장자**: `.gg`
-- **실행 모델**: `BigInt` 정수 스택 + `Map<bigint, bigint>` 힙 메모리를 갖춘 스택 가상 머신(VM)
+- **실행 모델**: Rust 코어([`crates/gg-core/`](crates/gg-core/)) 기반 `BigInt` 정수 스택 + `BTreeMap<BigInt, BigInt>` 힙 메모리를 갖춘 가상 머신(`JjeJjeVM`) — 네이티브 바이너리(`gg-cli`)와 브라우저 WebAssembly(`gg-wasm`)가 단일 엔진을 공유
 - **엄격한 문법 검사**: 미등록 키워드·오타·짝이 맞지 않는 블록을 실행 전에 모두 수집하여 밈 말투(또는 `--error-style plain`) 진단 메시지로 알려줍니다. (`//` 한 줄 주석 지원)
-- **웹 플레이그라운드**: SvelteKit 3 + Svelte 5 (Runes) + 웜 다크 터미널 스타일 UI, Web Worker 비동기 실행/중지, 스텝 디버거, 실시간 문법 검사, 스택/메모리 인스펙터, **JS/C11 실시간 컴파일(`COMPILE` 탭)**, 카테고리별 16종 실행 예제, `localStorage` 자동 저장, URL 공유 링크(`#code=...`), 문자열 → `.gg` 변환기를 제공합니다.
-- **생태계 · 문서**: 대화형 CLI REPL(`gg repl`), 실행 트레이스(`--trace`), JS/C11 컴파일러(`--emit js|c`), [`DESIGN.md`](DESIGN.md) 설계 명세, [`spec/conformance.json`](spec/conformance.json) 적합성 테스트, [`editors/vscode/`](editors/vscode/) VS Code 문법 강조 확장을 포함합니다.
+- **웹 플레이그라운드**: SvelteKit 3 + Svelte 5 (Runes) + **Rust WebAssembly(`gg-wasm`)** 엔진, Web Worker 비동기 실행/중지, 스텝 디버거, 실시간 문법 검사, 스택/메모리 인스펙터, **JS/C11 실시간 컴파일(`COMPILE` 탭)**, 카테고리별 16종 실행 예제, `localStorage` 자동 저장, URL 공유 링크(`#code=...`), 문자열 → `.gg` 변환기를 제공합니다.
+- **생태계 · 문서**: 네이티브 Rust CLI & 대화형 REPL(`gg repl`), 실행 트레이스(`--trace`), JS/C11 컴파일러(`--emit js|c`), [`DESIGN.md`](DESIGN.md) 설계 명세, [`spec/conformance.json`](spec/conformance.json) 적합성 테스트, [`editors/vscode/`](editors/vscode/) VS Code 문법 강조 확장을 포함합니다.
 
 ---
 
 ## 빠른 시작
 
 ### 웹 플레이그라운드 실행
+> 사전 요구 사항: Node.js 20+, Rust (`rustup target add wasm32-unknown-unknown`), `wasm-bindgen-cli 0.2.130`
+
 ```bash
 npm install
+npm run build:wasm
 npm run dev
 ```
 
@@ -37,48 +40,49 @@ npm run dev
 
 프로덕션 타입체크 & 정적 빌드:
 ```bash
+npm run build:wasm
 npm run build
 npm run preview
 ```
 
 ### GitHub Pages 자동 배포
-`main` 브랜치에 push하면 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 워크플로우가 `npm ci` → `npm test` → `npm run build:pkg` → `BASE_PATH=/gg-lang npm run build`를 실행해 `dist/`를 GitHub Pages로 자동 배포합니다.
+`main` 브랜치에 push하면 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 워크플로우가 `cargo test --workspace && cargo build --release -p gg-cli` → `npm run build:wasm` → `npm test` → `BASE_PATH=/gg-lang npm run build`를 실행해 WASM 번들이 포함된 `dist/`를 GitHub Pages로 자동 배포합니다.
 
-### CLI 인터프리터, REPL & 컴파일러 (`gg`)
+### 네이티브 Rust CLI, REPL & 컴파일러 (`gg`)
 
-패키지 빌드 후 전역 바이너리 엔트리(`dist-pkg/cli.js`, `bin`: `gg`, `gg-lang`)로 실행하거나 `npm run gg --`로 바로 실행할 수 있습니다.
+[`crates/gg-cli/`](crates/gg-cli/)를 릴리스 빌드해 `./target/release/gg` 네이티브 바이너리로 실행하거나 개발 중 `npm run gg --`(`cargo run --quiet -p gg-cli --`)로 바로 실행할 수 있습니다.
 
 ```bash
-# CLI 및 라이브러리 패키지 빌드
-npm run build:pkg
+# 네이티브 CLI 릴리스 빌드 (target/release/gg)
+cargo build --release -p gg-cli   # 또는 npm run build:cli
 
 # 파일 실행 / 파이프 stdin
-node dist-pkg/cli.js examples/hello.gg
-printf "12 30" | npm run gg -- examples/add.gg
-printf "줴줴🔥ABC" | npm run gg -- examples/reverse.gg
-npm run gg -- -e "요이~ 예? 예? 지랄 야~~르 줴줴이야" --stdin "15 27"
-npm run gg -- examples/fibonacci.gg --check
+./target/release/gg examples/hello.gg
+printf "12 30" | ./target/release/gg examples/add.gg
+printf "줴줴🔥ABC" | ./target/release/gg examples/reverse.gg
+./target/release/gg -e "요이~ 예? 예? 지랄 야~~르 줴줴이야" --stdin "15 27"
+./target/release/gg examples/fibonacci.gg --check
 
 # 대화형 REPL (스택/힙 유지, :stack, :mem, :reset, :trace, :q, 다중 행 블록 이어쓰기)
-npm run gg -- repl
+./target/release/gg repl
 
 # 실행 트레이스(--trace) 및 일반 영문 진단(--error-style plain)
-npm run gg -- -e "요이~ 엄... 엄.. 지랄 야~~르 줴줴이야" --trace
-npm run gg -- -e "요이~ 어엄 줴줴이야" --error-style plain
+./target/release/gg -e "요이~ 엄... 엄.. 지랄 야~~르 줴줴이야" --trace
+./target/release/gg -e "요이~ 어엄 줴줴이야" --error-style plain
 
 # 독립 실행 가능한 JavaScript(.mjs) 또는 ISO C11(.c) 코드로 컴파일
-npm run gg -- examples/rpn_calc.gg --emit js -o /tmp/rpn.mjs
+./target/release/gg examples/rpn_calc.gg --emit js -o /tmp/rpn.mjs
 printf "3 4 + 2 * 7 -" | node /tmp/rpn.mjs
 
-npm run gg -- examples/sort.gg --emit c -o /tmp/sort.c
+./target/release/gg examples/sort.gg --emit c -o /tmp/sort.c
 cc -std=c11 -O2 /tmp/sort.c -o /tmp/sort
 printf "5\n5 3 -2 9 0" | /tmp/sort
 ```
 
 문자열 → `.gg` 코드 변환:
 ```bash
-npm run gg -- --encode "안녕, 줴줴!"
-printf "파이프 입력" | npm run gg -- --encode
+./target/release/gg --encode "안녕, 줴줴!"
+printf "파이프 입력" | ./target/release/gg --encode
 ```
 
 주요 CLI 옵션:
@@ -97,9 +101,10 @@ printf "파이프 입력" | npm run gg -- --encode
 
 ### 테스트 & 취약점 검사
 ```bash
-npm test
-npm run typecheck
-npm run build:pkg
+cargo test --workspace   # Rust gg-core + gg-cli 유닛·적합성(34벡터)·16종 예제(VM/JS/C11) 테스트
+npm run build:wasm       # Rust -> WASM 엔진 빌드 (src/lib/wasm-pkg/)
+npm test                 # svelte-kit sync + Vitest (WASM 엔진 브리지, VS Code 확장 테스트)
+npm run typecheck        # svelte-check + tsconfig.node.json
 npm audit
 ```
 
@@ -176,38 +181,35 @@ npm audit
 ## 프로젝트 구조
 
 ```text
+Cargo.toml          # Rust 워크스페이스 (gg-core, gg-cli, gg-wasm)
 vite.config.ts      # Vite + SvelteKit 3 통합 설정 & Tailscale 허용 호스트
-tsconfig.json       # SvelteKit/코어/웹 TypeScript 설정
-tsconfig.node.json  # CLI/테스트/설정용 Node TypeScript 설정
-tsconfig.pkg.json   # npm 배포용 CLI/코어 라이브러리 빌드 설정 (dist-pkg/)
+tsconfig.json       # SvelteKit/웹 TypeScript 설정
+tsconfig.node.json  # Vite/Vitest 테스트용 Node TypeScript 설정
 DESIGN.md           # 공식 언어 설계 및 VM/컴파일러 형식 명세
 README_EN.md        # 영문 문서
+crates/
+  gg-core/          # Rust 핵심 엔진 (렉서, 파서, BigInt VM, 트랜스파일러, JS/C11 코드젠, 적합성 테스트)
+  gg-cli/           # 네이티브 CLI 바이너리 (`gg`, REPL, `--trace`, `--error-style`, `--emit`, `--encode`)
+  gg-wasm/          # wasm-bindgen 기반 브라우저 WebAssembly 바인딩
 static/
   favicon.svg       # .gg 모노그램 파비콘
 src/
   app.html          # SvelteKit HTML 템플릿 (IBM Plex Mono)
   app.css           # 웜 다크 터미널 스타일 디자인 시스템
-  core/
-    types.ts        # 토큰/진단/명령어/트레이스/VM 상태 타입
-    lexer.ts        # 토크나이저, 지수 상한, 오타 힌트 진단
-    parser.ts       # 블록 검증, 조각(REPL) 파싱 & 바이트코드 컴파일러
-    vm.ts           # BigInt 스택 & 메모리 가상 머신 (step/run/onTrace)
-    codegen.ts      # .gg -> JavaScript(.mjs) / ISO C11(.c) 코드 생성기
-    transpiler.ts   # 임의 문자열 -> .gg 코드 변환기
-    index.ts        # 공용 API (compile, analyze, createVM, run, compileToTarget, textToGG)
   lib/
+    engine.ts       # 브라우저·Vitest용 gg-wasm TypeScript 브리지 (SteppingVM, analyze, compileToTarget, textToGG)
+    wasm-pkg/       # `npm run build:wasm`으로 생성되는 WASM/JS 바인딩 (.gitignore 대상)
     examples.ts     # examples/*.gg raw import 기반 카테고리별 예제 17종
-    worker.ts       # 비동기 실행용 Web Worker
+    worker.ts       # WASM 비동기 실행용 Web Worker
     utils.ts        # 팔레트, 클립보드 폴백, 공유 링크 인코더
     components/     # Svelte 5 Runes UI 컴포넌트 7종 (COMPILE JS/C 탭 포함)
   routes/
     +layout.ts      # 정적 프리렌더링 / SPA 설정 (prerender=true, ssr=false)
     +layout.svelte  # 전역 스타일 & 1px 에디토리얼 프레임
     +page.svelte    # 플레이그라운드 상태 오케스트레이션
-  cli.ts            # 파일 실행, run, repl, --emit, --trace, --error-style, --encode CLI
-  cli-format.ts     # meme / plain 진단 포매터 및 트레이스 출력 포매터
-  repl.ts           # 대화형 REPL 엔진 (:stack, :mem, :reset, :trace, 멀티라인 지원)
-  __tests__/        # Vitest 테스트 스위트 10종 (core, CLI, REPL, codegen, examples, conformance, vscode-ext)
+  __tests__/
+    wasm-engine.test.ts  # Rust WASM 엔진 브리지 & 16종 예제 통합 테스트
+    vscode-ext.test.ts   # VS Code TextMate 문법 & 스니펫 검증
 examples/           # .gg 예제 파일 16종 + examples/README.md
 spec/               # 타 언어 포팅용 적합성 테스트 벡터 (conformance.json, README.md)
 editors/

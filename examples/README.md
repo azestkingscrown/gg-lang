@@ -5,12 +5,13 @@
 ## 실행 방법
 
 ```bash
-# CLI로 직접 실행
-npm run gg -- examples/hello.gg
-printf "48 18" | npm run gg -- examples/gcd.gg
+# 네이티브 Rust CLI 빌드 및 실행 (또는 `npm run gg --`)
+cargo build --release -p gg-cli
+./target/release/gg examples/hello.gg
+printf "48 18" | ./target/release/gg examples/gcd.gg
 
 # C11 / JavaScript 독립 실행 코드로 컴파일
-npm run gg -- examples/sort.gg --emit c -o /tmp/sort.c && cc -O2 /tmp/sort.c -o /tmp/sort
+./target/release/gg examples/sort.gg --emit c -o /tmp/sort.c && cc -O2 /tmp/sort.c -o /tmp/sort
 printf "5\n5 3 -2 9 0" | /tmp/sort
 ```
 

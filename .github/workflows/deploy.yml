@@ -22,6 +22,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli
+        run: |
+          curl -fsSL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.130/wasm-bindgen-0.2.130-x86_64-unknown-linux-musl.tar.gz \
+            | tar -xz -C /tmp
+          install -m 755 /tmp/wasm-bindgen-0.2.130-x86_64-unknown-linux-musl/wasm-bindgen "$HOME/.cargo/bin/wasm-bindgen"
+          wasm-bindgen --version
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,11 +46,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Run Rust tests and build CLI
+        run: cargo test --workspace && cargo build --release -p gg-cli
 
-      - name: Build CLI package
-        run: npm run build:pkg
+      - name: Build WASM engine
+        run: npm run build:wasm
+
+      - name: Run Vitest tests
+        run: npm test
 
       - name: Build static site
         env:
