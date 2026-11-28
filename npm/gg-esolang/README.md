@@ -7,17 +7,18 @@ Official fast, dependency-free wrapper for the `gg` native CLI executable.
 ## Instant Run (No installation required)
 
 ```bash
-# Run a .gg script directly with npx
-npx gg-esolang script.gg
-
-# Check version
-npx gg-esolang --version
+# Run inline code immediately (no file required)
+npx gg-esolang -e "요이~ 엄..... 야~~르 줴줴이야"
 
 # Interactive REPL
-npx gg-esolang
+npx gg-esolang repl
 
-# Explain source execution step-by-step
-npx gg-esolang --explain script.gg
+# Run a local .gg script
+npx gg-esolang <file.gg>
+
+# Trace execution step-by-step / check version
+npx gg-esolang --trace <file.gg>
+npx gg-esolang --version
 ```
 
 ## Global Installation (Optional)
@@ -26,9 +27,9 @@ npx gg-esolang --explain script.gg
 npm install -g gg-esolang
 
 # Run directly
-gg script.gg
+gg <file.gg>
 # or
-gg-esolang script.gg
+gg-esolang <file.gg>
 ```
 
 ## Features

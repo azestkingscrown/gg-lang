@@ -53,19 +53,22 @@ npm run preview
 Node.js 환경이 있다면 별도 빌드나 설치 없이 `npx gg-esolang`으로 네이티브 Rust 바이너리를 즉시 실행할 수 있습니다:
 
 ```bash
-# .gg 스크립트 즉시 실행
-npx gg-esolang examples/hello.gg
+# 인라인 코드 즉시 실행 (파일 없이 바로 테스트 가능)
+npx gg-esolang -e "요이~ 엄..... 야~~르 줴줴이야"
 
 # 대화형 REPL 실행
 npx gg-esolang repl
 
-# 인라인 코드 실행 및 버전 확인
-npx gg-esolang -e "요이~ 엄..... 야~~르 줴줴이야"
+# 로컬 .gg 파일 실행
+npx gg-esolang <파일명.gg>
+
+# 문자열을 .gg 코드로 변환 / 버전 확인
+npx gg-esolang --encode "Hello!"
 npx gg-esolang --version
 
 # (선택) 글로벌 설치 후 단축 명령어 gg로 실행
 npm install -g gg-esolang
-gg examples/hello.gg
+gg <파일명.gg>
 ```
 
 ### 네이티브 Rust CLI, REPL & 컴파일러 (`gg`)

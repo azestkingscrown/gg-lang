@@ -19,19 +19,22 @@ A **stack-based esoteric programming language (Esolang)** inspired by the Korean
 If you have Node.js installed, you can run the native Rust binary instantly via `npx gg-esolang`:
 
 ```bash
-# Run a .gg script directly
-npx gg-esolang examples/hello.gg
+# Run inline code immediately (no file required)
+npx gg-esolang -e "요이~ 엄..... 야~~르 줴줴이야"
 
 # Interactive REPL
 npx gg-esolang repl
 
-# Inline eval & version check
-npx gg-esolang -e "요이~ 엄..... 야~~르 줴줴이야"
+# Run a local .gg file
+npx gg-esolang <file.gg>
+
+# Encode text to .gg / check version
+npx gg-esolang --encode "Hello!"
 npx gg-esolang --version
 
 # (Optional) Install globally to use the 'gg' command
 npm install -g gg-esolang
-gg examples/hello.gg
+gg <file.gg>
 ```
 
 ### 1. Build & Run Native Rust CLI (`gg`)
