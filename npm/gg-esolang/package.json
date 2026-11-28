@@ -1,6 +1,6 @@
 {
   "name": "gg-esolang",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "줴줴랭 (JjeJje / .gg) — 100% Rust core & native CLI launcher",
   "bin": {
     "gg": "bin/run.js",

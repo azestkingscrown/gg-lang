@@ -6,34 +6,46 @@ const https = require('https');
 const crypto = require('crypto');
 const { spawnSync, execSync } = require('child_process');
 
-const VERSION = '1.2.0';
-const TAG = 'v1.2';
+const VERSION = '1.2.1';
+const TAG = 'v1.2.1';
 const REPO = 'azestkingscrown/gg-lang';
 
 const TARGET_MAP = {
   'linux-x64': {
-    asset: 'gg-v1.2-linux-x86_64.tar.gz',
+    asset: 'gg-v1.2.1-linux-x86_64.tar.gz',
     binName: 'gg',
     archiveType: 'tar.gz',
-    sha256: '9a22198c75ed71a154a436ce8af96c536f54dce8d62cedd81825a3625181eb93',
+    sha256: '1e7c3ae92aca1f3660c0d1a09f74af56a51d4b126b263f067d0570b75bab9fb5',
   },
   'linux-arm64': {
-    asset: 'gg-v1.2-linux-aarch64.tar.gz',
+    asset: 'gg-v1.2.1-linux-aarch64.tar.gz',
     binName: 'gg',
     archiveType: 'tar.gz',
-    sha256: '8b0632c77a70f397845875332ed998cf77c21872cc932ad0965409ab641317e6',
+    sha256: '75386d70c0e8d1625d74763be6ea2e79fbb6b672a3b523bf31513c0c315c1807',
   },
   'darwin-arm64': {
-    asset: 'gg-v1.2-macos-aarch64.tar.gz',
+    asset: 'gg-v1.2.1-macos-aarch64.tar.gz',
     binName: 'gg',
     archiveType: 'tar.gz',
-    sha256: '4802ccccb5075a51cc6f9917b152d9b87e25db36d71b2fde45443839455fbaca',
+    sha256: 'da8cb67c03d1b0c7ac164d30891147e4be816588ff5986f6a70b26378268ab7e',
+  },
+  'darwin-x64': {
+    asset: 'gg-v1.2.1-macos-x86_64.tar.gz',
+    binName: 'gg',
+    archiveType: 'tar.gz',
+    sha256: '892eed5f6ffe81e5b47de44e6de5da88ae12117454a171c6a525e84a594e2eeb',
   },
   'win32-x64': {
-    asset: 'gg-v1.2-windows-x86_64.zip',
+    asset: 'gg-v1.2.1-windows-x86_64.zip',
     binName: 'gg.exe',
     archiveType: 'zip',
-    sha256: '87b2ef15b3bacf81c03a1537e351afc6efaf6c6d4ff50a645595eb13a6eac66f',
+    sha256: 'f30612047c6791a0355e555ac51efef8351466d542de5c14f4aa895a8e8d466b',
+  },
+  'win32-arm64': {
+    asset: 'gg-v1.2.1-windows-aarch64.zip',
+    binName: 'gg.exe',
+    archiveType: 'zip',
+    sha256: '9bc23e9d3406f5922446f3c09d0c9a344ff63a89bbafca4d8fde5739feea7bc',
   },
 };
 
